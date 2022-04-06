@@ -4,6 +4,6 @@ services:
     build: ./cary-server
     volumes:
       - ./cary-server/server:/app/server:ro
-      - ./cary-server/data:/app/data:ro
+      - ../../../Cary-Data:/app/data:ro
     ports:
       - "1337:1337"
