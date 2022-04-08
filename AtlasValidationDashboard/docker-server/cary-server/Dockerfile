@@ -5,6 +5,7 @@ RUN pip3 uninstall werkzeug && \
 
 RUN pip3 install \
     pandas \
+    scipy \
     plotly \
     dash==1.19.0 \
     dash-core-components==1.15.0 \
