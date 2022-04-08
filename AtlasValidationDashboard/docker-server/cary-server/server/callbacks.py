@@ -3,6 +3,8 @@
 ################
 from dash.dependencies import Input, Output, State
 import plotly.figure_factory as ff
+import plotly.express as px
+import scipy
 
 
 #####################
@@ -11,6 +13,10 @@ import plotly.figure_factory as ff
 from app import app
 from chi2 import chi2df
 
+
+#####################
+#Create data frame
+#####################
 df, errors = chi2df()
 
 

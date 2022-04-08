@@ -13,7 +13,6 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-# import plotly.express as px
 
 
 #############################
@@ -25,12 +24,6 @@ from content_first_row import *
 from content_second_row import *
 from content_third_row import *
 from content_fourth_row import *
-
-
-####################################
-#Import callbacks from callbacks.py
-####################################
-from callbacks import *
 
 
 ######################################
@@ -82,8 +75,15 @@ app.layout = html.Div([sidebar, content]) #see sidebar.py  #BOTH
 #app.layout = html.Div([content]) #see sidebar.py   #JUST CONTENT
 
 
+####################################
+#Import callbacks from callbacks.py
+####################################
+from callbacks import *
+
+
 ####################
 #Run the app server
 ####################
+server = app.server
 if __name__ == '__main__':
     app.run_server(debug=True,host='0.0.0.0',port='1337')
