@@ -52,7 +52,6 @@ sidebar = html.Div(
 ##############################
 content = html.Div( children=
     [
-        
         html.H2('Atlas Validation Dashboard', style=TEXT_STYLE),
         html.Hr(),
         content_first_row, #see content_first_row.py
@@ -62,7 +61,7 @@ content = html.Div( children=
             dcc.Tab(label='Chi2/NDF vs Hists', value='tab-2', children=[
                 content_third_row]),
         ]),
-        
+
         #content_second_row, #see content_second_row.py
         #content_third_row, #see content_third_row.py
         content_fourth_row, #see content_fourth_row.py

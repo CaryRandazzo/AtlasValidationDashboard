@@ -5,6 +5,17 @@
 import ROOT
 # from IPython.display import clear_output
 import pandas as pd
+from config import fileOne, fileTwo
+
+
+#defining these files should be done by input from a dash input box
+file1 = ROOT.TFile.Open(fileOne)
+#for some weird reason when this file1 line above is uncommented, the file2 line works fine
+#from within the callback. But specifically not this one
+file2 = ROOT.TFile.Open(fileTwo)
+#file1 = 'the fakeness'
+#file2 = 'the fakeness2'
+
 
 ####################
 #Main Function
@@ -155,27 +166,17 @@ def validate_uw_hists(tf,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors):
 ########################
 #Using the Main Function
 ########################
-#data15_13TeV.00276689.physics_Main.merge.HIST.f1051_h335._0001.1
-#data15_13TeV.00276689.physics_Main.merge.HIST.f1052_h335._0001
 
-###FILE_CONFIG - these are the two files that you want to analyze
-#they must be in the same directory as the scripts
-fileOne = '/app/data/data15_13TeV.00276689.physics_Main.merge.HIST.f1051_h335._0001.1'
-fileTwo = '/app/data/data15_13TeV.00276689.physics_Main.merge.HIST.f1052_h335._0001'
+def chi2df():
+    # ROOT.gSystem.RedirectOutput("/dev/null")
 
-#defining these files should be done by input from a dash input box
-file1 = ROOT.TFile.Open(fileOne)
- #for some weird reason when this file1 line above is uncommented, the file2 line works fine
- #from within the callback. But specifically not this one
-file2 = ROOT.TFile.Open(fileTwo)
-#file1 = 'the fakeness'
-# file2 = 'the fakeness2'
+    #WHEN YOU WANT TO KEEP WORKING ON THE INPUT TEXT FOR THE FILES, COMMENT THESE BELOW OUT
+    #get output on the main function based on the 2 input files
+    f_path, chi2_dict,n_th1,n_th2,n_tp,errors = validate_uw_hists(file1,file2,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,0)
 
-#WHEN YOU WANT TO KEEP WORKING ON THE INPUT TEXT FOR THE FILES, COMMENT THESE BELOW OUT
-#get output on the main function based on the 2 input files
-f_path, chi2_dict,n_th1,n_th2,n_tp,errors = validate_uw_hists(file1,file2,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,0)
+    #construct the dataframe
+    df = pd.DataFrame(chi2_dict)
 
-#construct the dataframe
-df = pd.DataFrame(chi2_dict)
+    print('done')
 
-print('done')
+    return df, errors

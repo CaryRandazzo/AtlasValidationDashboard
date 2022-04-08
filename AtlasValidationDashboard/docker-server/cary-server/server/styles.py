@@ -8,7 +8,7 @@ SIDEBAR_STYLE = {
     'bottom': 0,
     'width': '20%',
     'padding': '20px 10px',
-    'background-color': '#f8f9fa',
+    'backgroundColor': '#f8f9fa',
     'overflow': 'auto',
     'display': 'none' #comment to display sidebar
 }

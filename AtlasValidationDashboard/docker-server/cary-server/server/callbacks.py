@@ -8,8 +8,11 @@ import plotly.figure_factory as ff
 #####################
 #import python files
 #####################
-from app import *
-from chi2 import *
+from app import app
+from chi2 import chi2df
+
+df, errors = chi2df()
+
 
 ################
 #UPDATE GRAPH 1
@@ -59,7 +62,7 @@ def update_graph_2(n_clicks, dropdown_value, range_slider_value, check_list_valu
     #print(dropdown_value)
     #print(range_slider_value)
     #print(check_list_value)
-    #print(radio_items_value)    
+    #print(radio_items_value)
     df_th2s = df[df['f_type']=='TH2']
     hist_data = [df_th2s['chi2ndf_vals'].values]    
     group_labels = ['distplot'] # name of the dataset
@@ -320,7 +323,6 @@ def update_card_text_4(n_clicks, dropdown_value, range_slider_value, check_list_
     [State('text_input1','value'),
      State('text_input2','value')]
     )
-
 def update_transfer_vals(n_clicks,text_input1,text_input2):
     #print(text_input1)
     #print(text_input2)

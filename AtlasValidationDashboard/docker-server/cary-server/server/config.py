@@ -2,6 +2,10 @@
 #Configuration File#
 #########################
 
-#configuring the plots to compare with chi2 - set the first and second files to compare
-fileOne = 'PHYSVAL_JZ3W_FE.root'
-fileTwo = 'PHYSVAL_JZ3W_PFO.root'
+
+###FILE_CONFIG - these are the two files that you want to analyze
+#they must be in the same directory as the scripts
+fileOne = '/app/data/data15_13TeV.00276689.physics_Main.merge.HIST.f1051_h335._0001.1'
+#data15_13TeV.00276689.physics_Main.merge.HIST.f1051_h335._0001.1
+fileTwo = '/app/data/data15_13TeV.00276689.physics_Main.merge.HIST.f1052_h335._0001'
+#data15_13TeV.00276689.physics_Main.merge.HIST.f1052_h335._0001
