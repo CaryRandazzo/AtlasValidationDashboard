@@ -42,6 +42,7 @@ def update_graph_1(n_clicks, dropdown_value, range_slider_value, check_list_valu
     #fig['data'].append(px.Scatter())
     #fig.layout.paper_bgcolor = 'red'
     #fig.update_layout(title_text=f'TH1 Distplot',xaxis_title='Chi2/NDF', xaxis={'linecolor':'red', 'mirror':True}, yaxis={'linecolor':'red','mirror':True})
+
     fig.update_layout(title_text=f'TH1 Distplot',xaxis_title='Chi2/NDF')
     #fig.update_xaxes(linecolor='red')
     #fig.update_yaxes(linecolor='red')    
@@ -127,7 +128,7 @@ def update_graph_4(n_clicks, dropdown_value, range_slider_value, check_list_valu
     #print(radio_items_value)  # Sample data and figure
     df_th1s = df[df['f_type']=='TH1']
     #make smaller x-axis names?
-    fig = px.scatter(df_th1s, x="f_name", y="chi2ndf_vals")
+    fig = px.scatter(df_th1s, x="f_name", y="chi2ndf_vals", width=600,height=1050)
     fig.update_layout(title_text=f'TH1 Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 
@@ -150,7 +151,7 @@ def update_graph_5(n_clicks, dropdown_value, range_slider_value, check_list_valu
     #print(radio_items_value)  # Sample data and figure
     df_th2s = df[df['f_type']=='TH2']
     #make smaller x-axis names?
-    fig = px.scatter(df_th2s, x="f_name", y="chi2ndf_vals")
+    fig = px.scatter(df_th2s, x="f_name", y="chi2ndf_vals", width=600,height=1100)
     fig.update_layout(title_text=f'TH2 Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 
@@ -173,7 +174,7 @@ def update_graph_6(n_clicks, dropdown_value, range_slider_value, check_list_valu
     #print(radio_items_value)  # Sample data and figure
     df_tp = df[df['f_type']=='TProfile']
     #make smaller x-axis names?
-    fig = px.scatter(df_tp, x="f_name", y="chi2ndf_vals")
+    fig = px.scatter(df_tp, x="f_name", y="chi2ndf_vals", width=600,height=920)
     fig.update_layout(title_text=f'TProfile Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 

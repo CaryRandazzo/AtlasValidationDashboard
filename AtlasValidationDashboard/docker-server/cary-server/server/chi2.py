@@ -22,6 +22,9 @@ file2 = ROOT.TFile.Open(fileTwo)
 ####################
 
 def validate_uw_hists(tf,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors):  
+
+    folder_list = ['CaloMonitoring', 'Jets','MissingEt','Tau','egamma']
+
     #main loop
     for key in tf.GetListOfKeys():
         input = key.ReadObj()
@@ -46,7 +49,7 @@ def validate_uw_hists(tf,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors):
             if len(split_path) == 5:
                 #we are 2 directories deep, go deeper
                 f_path,chi2_dict,n_th1,n_th2,n_tp,errors = validate_uw_hists(input,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors)  
-            elif len(split_path) > 5 and any(folder in split_path for folder in ('CaloMonitoring', 'Jets','MissingEt','Tau','egamma')):                
+            elif len(split_path) > 5 and any(folder in split_path for folder in (folder_list)):                
                 #we are greater than 3 directories deep and these directories include the specified folders above, goo deeper
                 f_path,chi2_dict,n_th1,n_th2,n_tp,errors = validate_uw_hists(input,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors)     
             else:
