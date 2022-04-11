@@ -1,25 +1,7 @@
-#####################################################################################################################################################
-#Author: Cary Randazzo, Masters Applied Physics, Louisiana Tech University                                                                                                   
+###########################################################################
+#Author: Cary Randazzo, Louisiana Tech University                                                                                                   
 #Date: 11-13-2020                                                                                                                                   
-# Run directions:                                                                                                                                   
-""" Install Docker, Install Docker Compose,                                                                                                         
-navigate to the github containing the installtion files (currently CaryRandazzo/AtlasNetPrivate/) 
-then click code and in terminal at the location you want the files stored enter the command:
-git pull https://github.com:CaryRandazzo/AtlasNetPrivate.git
-In order to change the configuration, (for now) place the data files to compare in the cary-data folder.
-Then navigate to the /AtlasNetPrivate/AtlasValidationDashboard/docker-server/cary-server/server/config.py folder and set fileOne
-to the name of the first file to compare, fileTwo to the name of the second file to compare, and folder_list to the folders of interest to analyze
-for the comparison, save the changes to the config.
-Finally, in /AtlasNetPrivate/AtlasValidationDashboard/docker-server/ execute the command:
-docker compose build
-then execute the command:
-docker compose up
-then enter a browser and navigate to the url: http://localhost:1337/
-The dashboard should be visible.
-Use ctrl+z in termal to close the server, docker compose down to take down the currently up version of the server, and sometimes rebuilding may be
-necessary.
-"""
-#####################################################################################################################################################
+###########################################################################
 
 
 ##########################
