@@ -1,28 +1,25 @@
-################
-#import modules
-################
+##################
+# Import modules #
+##################
 from dash.dependencies import Input, Output, State
 import plotly.figure_factory as ff
 import plotly.express as px
 import scipy
 
 
-#####################
-#import python files
-#####################
+###########################################
+# Import python files and initialize data #
+###########################################
 from app import app
 from chi2 import chi2df
 
-
-#####################
-#Create data frame
-#####################
+# Initialize data and any errors
 df, errors = chi2df()
 
 
-################
-#UPDATE GRAPH 1
-################
+##################
+# UPDATE GRAPH 1 #
+##################
 @app.callback(
     Output('graph_1', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -30,34 +27,17 @@ df, errors = chi2df()
      State('radio_items', 'value')
      ])
 def update_graph_1(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)    
     df_th1s = df[df['f_type']=='TH1']
     hist_data = [df_th1s['chi2ndf_vals'].values]    
     group_labels = ['distplot'] # name of the dataset
     fig = ff.create_distplot(hist_data, group_labels, show_hist=False, histnorm='')#,show_rug=False)
-    #fig['data'].append(px.Scatter())
-    #fig.layout.paper_bgcolor = 'red'
-    #fig.update_layout(title_text=f'TH1 Distplot',xaxis_title='Chi2/NDF', xaxis={'linecolor':'red', 'mirror':True}, yaxis={'linecolor':'red','mirror':True})
-
     fig.update_layout(title_text=f'TH1 Distplot',xaxis_title='Chi2/NDF')
-    #fig.update_xaxes(linecolor='red')
-    #fig.update_yaxes(linecolor='red')    
-    #fig = {
-        #'data': [{
-        #    'x': [1, 2, 3],
-        #    'y': [3, 4, 5]
-    #    }]
-    #}
     return fig
 
 
-################
-#UPDATE GRAPH 2
-################
+##################
+# UPDATE GRAPH 2 #
+##################
 @app.callback(
     Output('graph_2', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -65,29 +45,17 @@ def update_graph_1(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_graph_2(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)
     df_th2s = df[df['f_type']=='TH2']
     hist_data = [df_th2s['chi2ndf_vals'].values]    
     group_labels = ['distplot'] # name of the dataset
     fig = ff.create_distplot(hist_data, group_labels, show_hist=False, histnorm='')
     fig.update_layout(title_text=f'TH2 Distplot',xaxis_title='Chi2/NDF')
-    #fig = {
-    #    'data': [{
-    #        'x': [1, 2, 3],
-    #        'y': [3, 4, 5],
-    #        'type': 'bar'
-    #    }]
-    #}
     return fig
 
 
-################
-#UPDATE GRAPH 3
-################
+##################
+# UPDATE GRAPH 3 #
+##################
 @app.callback(
     Output('graph_3', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -95,25 +63,17 @@ def update_graph_2(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_graph_3(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)
     df_tp = df[df['f_type']=='TProfile']
     hist_data = [df_tp['chi2ndf_vals'].values]    
     group_labels = ['distplot'] # name of the dataset
     fig = ff.create_distplot(hist_data, group_labels, show_hist=False, histnorm='')
     fig.update_layout(title_text=f'TProfile Distplot',xaxis_title='Chi2/NDF')
-    #df = px.data.iris()
-    #fig = px.density_contour(df, x='sepal_width', y='sepal_length')
     return fig
 
 
-################
-#UPDATE GRAPH 4
-################
-
+##################
+# UPDATE GRAPH 4 #
+##################
 @app.callback(
     Output('graph_4', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -121,22 +81,16 @@ def update_graph_3(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_graph_4(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_th1s = df[df['f_type']=='TH1']
-    #make smaller x-axis names?
+    print(df_th1s)
     fig = px.scatter(df_th1s, x="f_name", y="chi2ndf_vals", width=600,height=1050)
     fig.update_layout(title_text=f'TH1 Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 
 
-################
-#UPDATE GRAPH 5
-################
-
+################## 
+# UPDATE GRAPH 5 #
+##################
 @app.callback(
     Output('graph_5', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -144,22 +98,15 @@ def update_graph_4(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_graph_5(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_th2s = df[df['f_type']=='TH2']
-    #make smaller x-axis names?
     fig = px.scatter(df_th2s, x="f_name", y="chi2ndf_vals", width=600,height=1100)
     fig.update_layout(title_text=f'TH2 Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 
 
-################
-#UPDATE GRAPH 6
-################
-
+##################
+# UPDATE GRAPH 6 #
+##################
 @app.callback(
     Output('graph_6', 'figure'),
     [Input('submit_button', 'n_clicks')],
@@ -167,21 +114,15 @@ def update_graph_5(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_graph_6(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_tp = df[df['f_type']=='TProfile']
-    #make smaller x-axis names?
     fig = px.scatter(df_tp, x="f_name", y="chi2ndf_vals", width=600,height=920)
     fig.update_layout(title_text=f'TProfile Chi2/NDF values by hist',xaxis_title='hist', yaxis_title='Chi2/NDF values')
     return fig
 
 
-#####################
-#UPDATE CARD TITLE 1
-#####################
+#######################
+# UPDATE CARD TITLE 1 #
+#######################
 @app.callback(
     Output('card_title_1', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -189,18 +130,13 @@ def update_graph_6(n_clicks, dropdown_value, range_slider_value, check_list_valu
      State('radio_items', 'value')
      ])
 def update_card_title_1(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_th1s = df[df['f_type']=='TH1']
     return f'{len(df_th1s.values)}'
 
 
-####################
-#UPDATE CARD TEXT 1
-####################
+######################
+# UPDATE CARD TEXT 1 #
+######################
 @app.callback(
     Output('card_text_1', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -208,16 +144,11 @@ def update_card_title_1(n_clicks, dropdown_value, range_slider_value, check_list
      State('radio_items', 'value')
      ])
 def update_card_text_1(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     return f"No. TH1's"
 
-#####################
-#UPDATE CARD TITLE 2
-#####################
+#######################
+# UPDATE CARD TITLE 2 #
+#######################
 @app.callback(
     Output('card_title_2', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -225,17 +156,12 @@ def update_card_text_1(n_clicks, dropdown_value, range_slider_value, check_list_
      State('radio_items', 'value')
      ])
 def update_card_title_2(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_th2s = df[df['f_type']=='TH2']
     return f'{len(df_th2s.values)}'
 
-####################
-#UPDATE CARD TEXT 2
-####################
+######################
+# UPDATE CARD TEXT 2 #
+######################
 @app.callback(
     Output('card_text_2', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -243,16 +169,11 @@ def update_card_title_2(n_clicks, dropdown_value, range_slider_value, check_list
      State('radio_items', 'value')
      ])
 def update_card_text_2(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     return f"No. TH2's"
 
-#####################
-#UPDATE CARD TITLE 3
-#####################
+#######################
+# UPDATE CARD TITLE 3 #
+#######################
 @app.callback(
     Output('card_title_3', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -260,17 +181,12 @@ def update_card_text_2(n_clicks, dropdown_value, range_slider_value, check_list_
      State('radio_items', 'value')
      ])
 def update_card_title_3(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     df_tp = df[df['f_type']=='TProfile']
     return f'{len(df_tp.values)}'
 
-####################
-#UPDATE CARD TEXT 3
-####################
+######################
+# UPDATE CARD TEXT 3 #
+######################
 @app.callback(
     Output('card_text_3', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -278,16 +194,11 @@ def update_card_title_3(n_clicks, dropdown_value, range_slider_value, check_list
      State('radio_items', 'value')
      ])
 def update_card_text_3(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     return f"No. TProfile's"
 
-#####################
-#UPDATE CARD TITLE 4
-#####################
+#######################
+# UPDATE CARD TITLE 4 #
+#######################
 @app.callback(
     Output('card_title_4', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -295,16 +206,11 @@ def update_card_text_3(n_clicks, dropdown_value, range_slider_value, check_list_
      State('radio_items', 'value')
      ])
 def update_card_title_4(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure    
     return f'{errors}'
 
-####################
-#UPDATE CARD TEXT 4
-####################
+######################
+# UPDATE CARD TEXT 4 #
+######################
 @app.callback(
     Output('card_text_4', 'children'),
     [Input('submit_button', 'n_clicks')],
@@ -312,17 +218,11 @@ def update_card_title_4(n_clicks, dropdown_value, range_slider_value, check_list
      State('radio_items', 'value')
      ])
 def update_card_text_4(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
-    #print(n_clicks)
-    #print(dropdown_value)
-    #print(range_slider_value)
-    #print(check_list_value)
-    #print(radio_items_value)  # Sample data and figure
     return f"Chi2Test Errors"
 
-#####################
-#UPDATE transfer_vals
-#####################
-
+########################
+# UPDATE transfer_vals #
+########################
 @app.callback(
     [Output('transfer_val1', 'children'),
     Output('transfer_val2','children')],
@@ -331,15 +231,12 @@ def update_card_text_4(n_clicks, dropdown_value, range_slider_value, check_list_
      State('text_input2','value')]
     )
 def update_transfer_vals(n_clicks,text_input1,text_input2):
-    #print(text_input1)
-    #print(text_input2)
     return text_input1, text_input2
 
 
-####################
-#UPDATE df
-####################
-
+#############
+# UPDATE df #
+#############
 @app.callback(
     Output('transfer_val_df','children'),
     [Input('submit_button', 'n_clicks')],
@@ -347,7 +244,7 @@ def update_transfer_vals(n_clicks,text_input1,text_input2):
      State('text_input2','value')]
     )
 def update_df(n_clicks,text_input1,text_input2):
-    #print('??????????????????????????????????')
+    """IN DEvELOPMENT ... not currently in use, can ignore all of this"""
     #defining these files should be done by input from a dash input box
     #print(type(text_input1))
     #print(type(text_input2))

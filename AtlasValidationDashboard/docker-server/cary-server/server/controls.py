@@ -1,28 +1,24 @@
-################
-#import modules
-################
+##################
+# Import modules #
+##################
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 import dash_core_components as dcc
 
 
-#############################
-#Create controls for Sidebar
-#############################
+###############################
+# Create controls for Sidebar #
+###############################
 controls = dbc.FormGroup(
     [
         html.Div(
             [
                 dbc.Input(id="text_input1", value="data15_13TeV.00276689.physics_Main.merge.HIST.f1051_h335._0001.1", type="text"),#, placeholder='' ),
-                #html.Br(),
-                #html.P(id="of1"),
             ]
         ),
         html.Div(
             [
                 dbc.Input(id="text_input2", value="data15_13TeV.00276689.physics_Main.merge.HIST.f1052_h335._0001", type="text")#, placeholder='' ),
-                #html.Br(),
-                #html.P(id="of2"),
             ]
         ),
         html.Br(),

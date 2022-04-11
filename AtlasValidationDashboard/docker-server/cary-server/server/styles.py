@@ -1,6 +1,6 @@
-#####################################
-#The style arguments for the sidebar
-#####################################
+#######################################
+# The style arguments for the sidebar #
+#######################################
 SIDEBAR_STYLE = {
     'position': 'fixed',
     'top': 0,
@@ -14,9 +14,9 @@ SIDEBAR_STYLE = {
 }
 
 
-###############################################
-#The style arguments for the main content page
-###############################################
+#################################################
+# The style arguments for the main content page #
+#################################################
 CONTENT_STYLE = {
     #turn off to maximize, turn on to display sidebar
     #'margin-left': '21%',

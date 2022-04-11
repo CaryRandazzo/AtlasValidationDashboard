@@ -1,19 +1,15 @@
-################
-#import modules
-################
+############################
+# Import modules and files #
+############################
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 
-
-#####################
-#import python files
-#####################
 from styles import *
 
 
-##############################
-#Create content for first row
-##############################
+################################
+# Create content for first row #
+################################
 content_first_row = dbc.Row([
     dbc.Col(
         dbc.Card(

@@ -1,12 +1,12 @@
-################
-#import modules
-################
+##################
+# Import modules #
+##################
 import dash_bootstrap_components as dbc
 
 
-##############################
-#Create content for fourth row
-##############################
+#################################
+# Create content for fourth row #
+#################################
 content_fourth_row = dbc.Row(
     [
         dbc.Col(

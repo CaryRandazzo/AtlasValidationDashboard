@@ -1,12 +1,12 @@
-################
-#import modules
-################
+##################
+# Import modules #
+##################
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 
-##############################
-#Create content for second row
-##############################
+#################################
+# Create content for second row #
+#################################
 content_second_row = dbc.Row(
     [
         dbc.Col(
