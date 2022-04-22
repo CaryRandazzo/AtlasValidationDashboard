@@ -7,8 +7,8 @@ import pandas as pd
 
 # In future updates, defining these files should be done by input from a dash input box
 from config import fileOne, fileTwo, folder_list
-file1 = ROOT.TFile.Open(fileOne)
-file2 = ROOT.TFile.Open(fileTwo)
+file1 = ROOT.TFile.Open("/app/data/" + fileOne)
+file2 = ROOT.TFile.Open("/app/data/" + fileTwo)
 
 #######################
 # Processing Function #
