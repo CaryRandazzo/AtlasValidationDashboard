@@ -12,4 +12,4 @@ RUN pip3 install \
     dash-html-components==1.1.2 \
     dash-bootstrap-components==0.11.1
 
-CMD ["python3", "/app/server/app.py"]
+CMD ["python3", "/app/src/app.py"]

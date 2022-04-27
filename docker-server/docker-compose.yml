@@ -1,9 +1,9 @@
 version: '3'
 services:
-  cary-server:
-    build: ./cary-server
+  server:
+    build: ./server
     volumes:
-      - ./cary-server/server:/app/server:ro
-      - ./cary-data:/app/data:ro
+      - ./server/src:/app/src:ro
+      - ./data-files:/app/data:ro
     ports:
       - "1337:1337"
