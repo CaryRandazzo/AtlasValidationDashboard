@@ -1,9 +1,0 @@
-version: '3'
-services:
-  server:
-    build: ./server
-    volumes:
-      - ./server/src:/app/src:ro
-      - ./data-files:/app/data:ro
-    ports:
-      - "1337:1337"
