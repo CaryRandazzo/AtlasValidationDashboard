@@ -6,5 +6,3 @@ RUN pip3 install \
     pandas \
     matplotlib \
     sklearn
-
-WORKDIR /app

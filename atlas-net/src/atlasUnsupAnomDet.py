@@ -31,7 +31,7 @@ def anomaly_scores(y_true, y_pred):
     # return anomaly_scores
     return loss #loss_scaled
 
-def build_clAE():
+def build_clAE(pMtrain_a2, pMtest_a2):
     """
 
     Construct the Autoencoder model that will transform the data for final anomaly prediction.
@@ -48,13 +48,6 @@ def build_clAE():
         pMtest_a2: A dataframe used for testing the model
 
     """
-
-    # The names for the split datasets have been preserved so they can be followed from the ATLAScollab/datafiles .ipynb files that detail how to construct this split dataset
-    try:
-        pMtrain_a2 = pd.read_csv('x_train_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
-        pMtest_a2 = pd.read_csv('x_test_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
-    except:
-        print('ERROR LOADING DATASET! NAVIGATE TO: https://github.com/CaryRandazzo/ATLAScollab/tree/main/ATLAS_DQ%26ML_Tools/data_prep and construct x_train_df2.csv and x_test_df2.csv to construct the datasets and reload this function')
 
     # Get a handle for the sequential model constructor
     clAE = Sequential()
@@ -489,7 +482,7 @@ def calculate_anoms_AEDB(pMtrain_a2, pMtest_a2, anomalous_hist, hist_to_calibrat
     # Determines the anomalous datapoints in the hist of interest anomalous_hist given the preds_df from the AE model and the best parameters from previous functions
     _, _, _, _, globalOLs, stripOLs, zoneOLs = eval_cm_get_roc_inputs_noplots(anomalous_hist, preds_df, eps, minpts)
 
-    return
+    return globalOLs, stripOLs, zoneOLs
 
 
 def calculate_anoms_DB(anomalous_hist, eps, minpts):
@@ -514,7 +507,7 @@ def calculate_anoms_DB(anomalous_hist, eps, minpts):
     # eval_cm_get_roc_inputs_noplots will have to be modified to not use AE specific information such as anomaly score or generate anything related to ROC/AUC due to no labels
     _, _, _, _, globalOLs, stripOLs, zoneOLs = eval_cm_get_roc_inputs_noplots(anomalous_hist, preds_df, eps, minpts)
 
-    return
+    return globalOLs, stripOLs, zoneOLs
 
 
 if __name__ == "__main__":
@@ -524,8 +517,11 @@ if __name__ == "__main__":
 
     """
 
-    pMtrain_a2 = pd.read_csv('x_train_df2.csv')
-    pMtest_a2 = pd.read_csv('x_test_df2.csv')
+    try:
+        pMtrain_a2 = pd.read_csv('/app/data/x_train_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
+        pMtest_a2 = pd.read_csv('/app/data/x_test_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
+    except:
+        print('ERROR LOADING DATASET! NAVIGATE TO: https://github.com/CaryRandazzo/ATLAScollab/tree/main/ATLAS_DQ%26ML_Tools/data_prep and construct x_train_df2.csv and x_test_df2.csv to construct the datasets and reload this function')
 
     #input from the user, for now we will use whatever
     anomalous_hist = pMtrain_a2[pMtrain_a2['ftag_id']==0][pMtrain_a2[pMtrain_a2['ftag_id']==0]['hist_id']==0]
@@ -536,7 +532,7 @@ if __name__ == "__main__":
 
     features = ['x','y','occ_0to1']
 
-    clAE = build_clAE()
+    clAE = build_clAE(pMtrain_a2, pMtest_a2)
 
     eps_range = np.arange(1e-5,1e-4,1e-5)
     minpts_range = np.arange(0,60,1)
@@ -545,4 +541,6 @@ if __name__ == "__main__":
     fpr_thresh = 0.2
     tpr_thresh = 0.8
 
-    calculate_anoms_AEDB(pMtrain_a2, pMtest_a2, anomalous_hist, hist_to_calibrate_sametype, features, clAE, eps_range, minpts_range, fpr_thresh, tpr_thresh)
+    globalOLs, stripOLs, zoneOLs = calculate_anoms_AEDB(pMtrain_a2, pMtest_a2, anomalous_hist, hist_to_calibrate_sametype, features, clAE, eps_range, minpts_range, fpr_thresh, tpr_thresh)
+
+    print(globalOLs)
