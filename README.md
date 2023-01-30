@@ -1,4 +1,4 @@
-Notice: All information is currently in the process of being and finalized. It will be available in the near future.
+Notice: All information is currently in the process of being and finalized. It will be available in the near future. All instructions are given from the perpective of an Ubuntu based linux operating system/.
 
 # Installation Instructions
 
@@ -12,7 +12,7 @@ Notice: All information is currently in the process of being and finalized. It w
 
 #### 3. Navigate to the github containing the installtion files (currently github.com/CaryRandazzo/AtlasValidationDashboard/),
 
-#### 4. Click code and in terminal at the location you want the files stored enter the command:
+#### 4. In a terminal at the location you want the files stored enter the command:
 git clone https://github.com/CaryRandazzo/AtlasValidationDashboard.git
 
 #### 5. Navigate to the /AtlasValidationDashboard/docker-server/ directory and execute the command:
