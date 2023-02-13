@@ -10,10 +10,10 @@ Notice: All information is currently in the process of being and finalized. It w
 #### 2. Install Docker Compose,                                                                                                         
  For an example installation on 20.04 Ubuntu, we recommend following the installation instructions on DigitalOcean's website for installing docker compose on Ubuntu 20.04. Make sure not to install the standalone version for the following steps to function properly.
 
-#### 3. Navigate to the github containing the installtion files (currently github.com/CaryRandazzo/AtlasValidationDashboard/),
+#### 3. Navigate to the github containing the installtion files (currently https://github.com/CaryRandazzo/AtlasValidationDashboard),
 
 #### 4. In a terminal at the location you want the files stored enter the command:
-git clone https://github.com/CaryRandazzo/AtlasValidationDashboard.git
+Fork the repository at https://github.com/CaryRandazzo/AtlasValidationDashboard
 
 #### 5. Navigate to the /AtlasValidationDashboard/docker-server/ directory and execute the command:
 docker compose build
