@@ -1,15 +1,14 @@
 ##################
 # Import modules #
 ##################
+from dash import html, dcc
 import dash_bootstrap_components as dbc
-import dash_html_components as html
-import dash_core_components as dcc
 
 
 ###############################
 # Create controls for Sidebar #
 ###############################
-controls = dbc.FormGroup(
+controls = html.Div(
     [
         html.Div(
             [
@@ -104,8 +103,7 @@ controls = dbc.FormGroup(
             id='submit_button',
             n_clicks=0,
             children='Submit',
-            color='primary',
-            block=True
+            color='primary'
         ),
     ]
 )
