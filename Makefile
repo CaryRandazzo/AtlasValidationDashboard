@@ -13,13 +13,14 @@ REGISTRY := "hub.docker.com"
 #####################################################
 .PHONY: build-data-gen
 build-data-gen:
-	[[ ! -z $$(docker images -q $(DATAGEN):latest 2> /dev/null) ]] || \
-		docker build \
-			-t $(DATAGEN) $(DATAGEN)
+	docker build -t $(DATAGEN) $(DATAGEN)
 
 
 .PHONY: run-data-gen
-run-data-gen: build-data-gen
+run-data-gen:
+	[[ ! -z $$(docker images -q $(DATAGEN):latest 2> /dev/null) ]] || \
+		docker build \
+			-t $(DATAGEN) $(DATAGEN)
 	[[ ! -z $$(docker ps -aq --filter name=$(DATAGEN) 2> /dev/null) ]] || \
 		docker run -it --rm \
 			-v $$(pwd)/$(DATAGEN)/src:/app/src:ro \
@@ -33,13 +34,15 @@ run-data-gen: build-data-gen
 #####################################################
 .PHONY: build-tensorflow
 build-tensorflow:
-	[[ ! -z $$(docker images -q $(ATLASNET):latest 2> /dev/null) ]] || \
-		docker build \
-			-t $(ATLASNET) $(ATLASNET)
+	docker build -t $(ATLASNET) $(ATLASNET)
 
 
 .PHONY: run-tensorflow
-run-tensorflow: build-tensorflow
+run-tensorflow:
+	[[ ! -z $$(docker images -q $(ATLASNET):latest 2> /dev/null) ]] || \
+		docker build \
+			-t $(ATLASNET) $(ATLASNET)
+	[[ ! -z $$(docker ps -aq --filter name=$(ATLASNET) 2> /dev/null) ]] || \
 		docker run -it --rm \
 			-v $$(pwd)/$(ATLASNET)/src:/app/src \
 			-v $$(pwd)/$(ATLASNET)/data-files:/app/data \
@@ -52,13 +55,14 @@ run-tensorflow: build-tensorflow
 #####################################################
 .PHONY: build-dashboard
 build-dashboard:
-	[[ ! -z $$(docker images -q $(DASHBOARD):latest 2> /dev/null) ]] || \
-		docker build \
-			-t $(DASHBOARD) $(DASHBOARD)
+	docker build -t $(DASHBOARD) $(DASHBOARD)
 
 
 .PHONY: run-dashboard
-run-dashboard: build-dashboard
+run-dashboard:
+	[[ ! -z $$(docker images -q $(DASHBOARD):latest 2> /dev/null) ]] || \
+		docker build \
+			-t $(DASHBOARD) $(DASHBOARD)
 	[[ ! -z $$(docker ps -aq --filter name=$(DASHBOARD) 2> /dev/null) ]] || \
 		docker run -it \
 			-v $$(pwd)/$(DASHBOARD)/src:/app/src \
@@ -74,7 +78,7 @@ run-dashboard: build-dashboard
 push-to-registry:
 	docker build \
 		-t $(REGISTRY)/$(DASHBOARD):latest $(DASHBOARD)
-	docker push $(REGISTRY)/$(DASHBOARD):latest
+	docker push $(REGISTRY)/Randazzo-CERN-ATLAS-DASHBOARD:latest
 
 
 .PHONY: diag
@@ -86,6 +90,14 @@ diag:
 	docker network ls
 	echo
 	echo "=====ip addresses====="
+	echo $(DATAGEN)
+	docker inspect -f \
+		'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+		$(DATAGEN) 2> /dev/null || echo "none"
+	echo $(ATLASNET)
+	docker inspect -f \
+		'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+		$(ATLASNET) 2> /dev/null || echo "none"
 	echo $(DASHBOARD)
 	docker inspect -f \
 		'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
