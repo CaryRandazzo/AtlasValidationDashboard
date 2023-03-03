@@ -20,9 +20,9 @@ push-to-registry:
 
 .PHONY: cleanup
 cleanup:
-	docker rm $(DATAGEN)
-	docker rm $(ATLASNET)
-	docker rm $(DASHBOARD)
+	docker rm -f $(DATAGEN)
+	docker rm -f $(ATLASNET)
+	docker rm -f $(DASHBOARD)
 
 
 .PHONY: diag
