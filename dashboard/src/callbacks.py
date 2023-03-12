@@ -16,21 +16,23 @@ from app import app
 from chi2 import chi2df
 
 # Initialize data and any errors
-df, errors = chi2df()
+# df, errors = chi2df() # The current ploblem is here, its not called after subm
+# print(df)
 
-# df, errors = None, None
+df, errors = None, None
 
-# @app.callback(
-#     Output('tmp', 'children'),
-#     Input('submit-button', 'n_clicks')
-#     )
-# def get_df(n_clicks):
-#     if n_clicks == 0:
-#         return
+@app.callback(
+    Output('tmp', 'children'),
+    Input('submit-button', 'n_clicks')
+    )
+def get_df(n_clicks):
+    if n_clicks == 0:
+        return
 
-#     print('WTFFF')
-#     global df, errors
-#     df, errors = chi2df()
+    print('WTFFF')
+    global df, errors
+    df, errors = chi2df()
+    print('dfwtf',df)
 
 
 ##################
@@ -47,9 +49,10 @@ df, errors = chi2df()
     )
 # def update_graph_1(n_clicks, dropdown_value, range_slider_value, check_list_value, radio_items_value):
 def update_graph_1(n_clicks):
-    # if n_clicks == 0:
-        # return
+    if n_clicks is not None and n_clicks > 0:
+        return
 
+    print("upating graph 1")
     df_th1s = df[df['f_type']=='TH1']
     hist_data = [df_th1s['chi2ndf_vals'].values]    
     group_labels = ['distplot'] # name of the dataset

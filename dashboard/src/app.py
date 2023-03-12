@@ -83,10 +83,10 @@ app.layout = html.Div([sidebar, content]) #see sidebar.py  #BOTH
 @app.callback(
     Output('output-data-upload','children'),
     Input('submit-button', 'n_clicks'),
-    Input('upload-data-1', 'contents'),
-    Input('upload-data-2', 'contents'),
-    Input('upload-data-1', 'last_modified'),
-    Input('upload-data-2', 'last_modified'),
+    State('upload-data-1', 'contents'),
+    State('upload-data-2', 'contents'),
+    State('upload-data-1', 'last_modified'),
+    State('upload-data-2', 'last_modified'),
     State('upload-data-1','filename'),
     State('upload-data-2','filename'),
     )
