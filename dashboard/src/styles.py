@@ -10,7 +10,7 @@ SIDEBAR_STYLE = {
     'padding': '20px 10px',
     'backgroundColor': '#f8f9fa',
     'overflow': 'auto',
-    'display': 'none' #comment to display sidebar
+    # 'display': 'none' #comment to display sidebar
 }
 
 
@@ -19,9 +19,9 @@ SIDEBAR_STYLE = {
 #################################################
 CONTENT_STYLE = {
     #turn off to maximize, turn on to display sidebar
-    #'margin-left': '21%',
-    #'margin-right': '1%',
-    #'padding': '20px 10p'
+    'margin-left': '21%',
+    'margin-right': '1%',
+    'padding': '20px 10p'
 }
 
 TEXT_STYLE = {

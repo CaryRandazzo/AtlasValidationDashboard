@@ -7,6 +7,8 @@
 ##########################
 # Import modules for app #
 ##########################
+import os
+import time
 import dash
 from dash import dcc, html
 import dash_bootstrap_components as dbc
@@ -76,7 +78,94 @@ app.layout = html.Div([sidebar, content]) #see sidebar.py  #BOTH
 ######################################
 # Import callbacks from callbacks.py #
 ######################################
+# from file_callbacks import *
+
+@app.callback(
+    Output('output-data-upload','children'),
+    Input('submit-button', 'n_clicks'),
+    Input('upload-data-1', 'contents'),
+    Input('upload-data-2', 'contents'),
+    Input('upload-data-1', 'last_modified'),
+    Input('upload-data-2', 'last_modified'),
+    State('upload-data-1','filename'),
+    State('upload-data-2','filename'),
+    )
+
+def parse_dropdowns(n_clicks, contents1, contents2, last_modified1, last_modified2, filename1, filename2):
+
+    if n_clicks == 0:
+        return ''
+
+    if not filename1 or not filename2:
+        try:
+            print(filename1)
+        except:
+            print(filename2)
+        return 'Please upload two ROOT TFile files.'
+
+    print('FILENAME1:',filename1)
+    print('FILENAME2:',filename2)
+    try:
+        os.remove('/app/data/fileOne.txt')
+    except:
+        with open ('/app/data/fileOne.txt','a+') as f:
+            f.write(filename1) 
+    try:
+        os.remove('/app/data/fileTwo.txt')
+    except:
+        with open ('/app/data/fileTwo.txt','a+') as f:
+            f.write(filename2)
+
+    # children = [
+        # zip(n_clicks, filename1, filename2)
+    # ]
+
+    # n_clicks = 0
+
+    return html.P(filename1),'\n',html.P(filename2),'\nUpload Successful.'
+        # html.Div([
+        # html.H6(filename1, filename2),
+        # html.P('Last modified: ' + str(last_modified1)) + '\n',
+        # html.P('Last modified: ' + str(last_modified2)),
+        # html.P('File successfully uploaded!')
+    # ]) # children
+
+@app.callback(
+    Output('upload-data-1', 'children'),
+    Input('upload-data-1', 'contents')
+)
+def update_status1(contents):
+
+    if contents is None:
+        return "Drag/Drop or Select File1"
+    else:
+        return html.Div([
+        html.P('File1 Uploaded')
+        ])
+
+@app.callback(
+    Output('upload-data-2', 'children'),
+    Input('upload-data-2', 'contents')
+)
+def update_status2(contents):
+
+    if contents is None:
+        return "Drag/Drop or Select File2"
+    else:
+        return html.Div([
+        html.P('File2 Uploaded')
+        ])
+
 from callbacks import *
+
+# @app.callback(
+#     Output('submit-button', 'n_clicks'),
+#     Input('url', 'pathname'),
+# )
+# def refresh_page(pathname):
+#     return time.time()
+
+
 
 
 ######################

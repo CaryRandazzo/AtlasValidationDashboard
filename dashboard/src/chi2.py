@@ -4,11 +4,32 @@
 
 import ROOT
 import pandas as pd
+import os
 
 # In future updates, defining these files should be done by input from a dash input box
 from config import fileOne, fileTwo, folder_list
-file1 = ROOT.TFile.Open("/app/data/" + fileOne)
-file2 = ROOT.TFile.Open("/app/data/" + fileTwo)
+
+try:
+    with open('/app/data/fileOne.txt', 'r') as f:
+        for line in f.readlines():
+            if  '' not in line or ' ' not in line or '\n' not in line:
+                file1 = ROOT.TFile.Open("/app/data/" + line)
+except:
+    print('file1 sucks')
+    file1 = ROOT.TFile('/app/data/fileOneError.root','RECREATE')
+
+print('FILE1:',file1)
+
+try:
+    with open('/app/data/fileTwo.txt', 'r') as f:
+        for line in f.readlines():
+            if  '' not in line or ' ' not in line or '\n' not in line:
+                file2 = ROOT.TFile.Open("/app/data/" + fileTwo)
+except:
+    print('file2 sucks')
+    file2 = ROOT.TFile.Open('/app/data/fileTwoError.root','RECREATE')
+
+
 
 #######################
 # Processing Function #
