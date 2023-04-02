@@ -544,3 +544,16 @@ if __name__ == "__main__":
     globalOLs, stripOLs, zoneOLs = calculate_anoms_AEDB(pMtrain_a2, pMtest_a2, anomalous_hist, hist_to_calibrate_sametype, features, clAE, eps_range, minpts_range, fpr_thresh, tpr_thresh)
 
     print(globalOLs)
+
+ """
+ 
+Test the ML on a histogram
+ 1. Get a histogram (anomalous_hist)
+ 2. Try to run the main part of this script and see if it works
+ 3. Make it work
+ 
+ Build the function for combining the things for endpoint display in dash
+ 1. Make a function that combines the anomalies with the histogram that anomalies are detected for
+  Once the anomalies are detected, construct the anomalous hist as a displayable.
+
+ """
