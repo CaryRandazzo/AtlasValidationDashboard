@@ -29,10 +29,10 @@ def get_df(n_clicks):
     if n_clicks == 0:
         return
 
-    print('WTFFF')
+    
     global df, errors
     df, errors = chi2df()
-    print('dfwtf',df)
+    print('df-view',df)
 
 
 ##################
