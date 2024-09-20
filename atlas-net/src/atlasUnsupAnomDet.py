@@ -498,6 +498,15 @@ def calculate_anoms_DB(anomalous_hist, eps, minpts):
     Example Use:
         eps: The best eps parameter that comes from the get_best_params_from_calibrated_df() function.
         minpts: The best minpts parameter that comes from the get_best_params_from_calibrated_df() function.
+        
+    Test the ML on a histogram
+        1. Get a histogram (anomalous_hist)
+        2. Try to run the main part of this script and see if it works
+        3. Make it work
+    
+    Build the function for combining the things for endpoint display in dash
+        1. Make a function that combines the anomalies with the histogram that anomalies are detected for
+    Once the anomalies are detected, construct the anomalous hist as a displayable.
 
     """
 
@@ -516,7 +525,7 @@ if __name__ == "__main__":
     This call assumes that pMtrain_a2 and pMtest_a2 are available datasets from the dataset construction guide on the github. (x_train_df2.csv, x_test_df2.csv)
 
     """
-
+    print("Attempting to read and process data files...")
     try:
         pMtrain_a2 = pd.read_csv('/app/data/x_train_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
         pMtest_a2 = pd.read_csv('/app/data/x_test_df2.csv', dtype={'x':'int8','y':'int8','ftag_id':'int8','occ':'float32','hist_type':'int8','hist_id':'int16','quality':'int8','occ_0to1':'float32','occ_zscore':'float32','occ_robust':'float32'})
@@ -524,36 +533,31 @@ if __name__ == "__main__":
         print('ERROR LOADING DATASET! NAVIGATE TO: https://github.com/CaryRandazzo/ATLAScollab/tree/main/ATLAS_DQ%26ML_Tools/data_prep and construct x_train_df2.csv and x_test_df2.csv to construct the datasets and reload this function')
 
     #input from the user, for now we will use whatever
+    print("constructing an anomalous histogram for testing...")
     anomalous_hist = pMtrain_a2[pMtrain_a2['ftag_id']==0][pMtrain_a2[pMtrain_a2['ftag_id']==0]['hist_id']==0]
 
     # The hist_to_calibrate_sametype will have known/labelled anomalous datapoints...so the algorithm should pick out the same as the labels,
     # This setting merel calibrates that hist_type
+    print("constructing a calibration histogram for testing...")
     hist_to_calibrate_sametype = anomalous_hist
 
+    print("constructing features...")
     features = ['x','y','occ_0to1']
 
+    print("constructing model...")
     clAE = build_clAE(pMtrain_a2, pMtest_a2)
 
+    print("constructing model input params...")
     eps_range = np.arange(1e-5,1e-4,1e-5)
     minpts_range = np.arange(0,60,1)
-
     # Could cause error if these requirements are not met
     fpr_thresh = 0.2
     tpr_thresh = 0.8
 
+    print("calculating anomalies...")
     globalOLs, stripOLs, zoneOLs = calculate_anoms_AEDB(pMtrain_a2, pMtest_a2, anomalous_hist, hist_to_calibrate_sametype, features, clAE, eps_range, minpts_range, fpr_thresh, tpr_thresh)
 
+    print("RESULTS:")
     print(globalOLs)
 
- """
  
-Test the ML on a histogram
- 1. Get a histogram (anomalous_hist)
- 2. Try to run the main part of this script and see if it works
- 3. Make it work
- 
- Build the function for combining the things for endpoint display in dash
- 1. Make a function that combines the anomalies with the histogram that anomalies are detected for
-  Once the anomalies are detected, construct the anomalous hist as a displayable.
-
- """

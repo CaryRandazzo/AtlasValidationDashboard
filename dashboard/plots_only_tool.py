@@ -168,7 +168,6 @@ def validate_uw_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, p
 # Modified version for standalone
 def chi2df(file1_path, file2_path):
 
-
     # Get root file1
     try:
         file1 = ROOT.TFile.Open(file1_path)
@@ -184,9 +183,10 @@ def chi2df(file1_path, file2_path):
         # print(len(file2.GetPath().split('/')))
     except Exception as e:
         print(f'file2 error: {e}')
+        
 
     # To silence the chi2 errors, use the following
-    ROOT.gSystem.RedirectOutput("/dev/null")
+    # ROOT.gSystem.RedirectOutput("/dev/null")
 
     # Calculate the chi2 values and other relevant information for the comparison
     f_path, chi2_dict,n_th1,n_th2,n_tp,errors = validate_uw_hists(file1, file1,file2,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,0, path_length)
@@ -200,12 +200,14 @@ def chi2df(file1_path, file2_path):
     return df, errors
 
 
-def plot_dist_th1(df, bins=1000, sizex=15, sizey=9):
+
+def plot_dist_th1(df, bins=10000, sizex=15, sizey=9):
+    print("constructing th1 data...")
     df_th1s = df[df['f_type']=='TH1']
-    hist_data = [df_th1s['chi2ndf_vals'].values]    
+    hist_data = df_th1s['chi2ndf_vals'].values
 
     plt.figure(figsize=(sizex,sizey))
-    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH1 Chi2/NDF', marker='o', color='blue')
+    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH1 Chi2/NDF', color='blue') # marker = ?
     plt.xlabel('Chi2/NDF')
     plt.ylabel('Frequency')
     plt.title('TH1 Chi2/NDF Distplot')
@@ -213,8 +215,9 @@ def plot_dist_th1(df, bins=1000, sizex=15, sizey=9):
     plt.show()
     
 def plot_dist_th2(df, bins=50, sizex=15, sizey=9):
+    print("constructing th2 data...")
     df_th2s = df[df['f_type']=='TH2']
-    hist_data = [df_th2s['chi2ndf_vals'].values]    
+    hist_data = [df_th2s['chi2ndf_vals'].values]
 
     plt.figure(figsize=(sizex,sizey))
     plt.hist(hist_data, bins=bins, alpha=0.7, label='TH2 Chi2/NDF', marker='o', color='blue')
@@ -225,6 +228,7 @@ def plot_dist_th2(df, bins=50, sizex=15, sizey=9):
     plt.show()
     
 def plot_dist_tp(df, bins=50, sizex=15, sizey=9):
+    print("constructing tp data...")
     df_tp = df[df['f_type']=='TProfile']
     hist_data = [df_tp['chi2ndf_vals'].values]    
 
@@ -237,7 +241,8 @@ def plot_dist_tp(df, bins=50, sizex=15, sizey=9):
     plt.grid(True)
     plt.show()
     
-def plot_chi2_thi1(df, sizex=15, sizey=9):
+def plot_chi2_th1(df, sizex=15, sizey=9):
+    print("constructing th1 data...")
     df_th1s = df[df['f_type']=='TH1']
 
     plt.figure(figsize=(sizex,sizey))
@@ -250,6 +255,7 @@ def plot_chi2_thi1(df, sizex=15, sizey=9):
     plt.show()
     
 def plot_chi2_th2(df, sizex=15, sizey=9):
+    print("constructing th2 data...")
     df_th2s = df[df['f_type']=='TH2']
 
     plt.figure(figsize=(sizex,sizey))
@@ -262,6 +268,7 @@ def plot_chi2_th2(df, sizex=15, sizey=9):
     plt.show()
     
 def plot_chi2_tp(df, sizex=15, sizey=9):
+    print("constructing th1 data...")
     df_tp = df[df['f_type']=='TProfile']
 
     plt.figure(figsize=(sizex,sizey))
@@ -274,10 +281,11 @@ def plot_chi2_tp(df, sizex=15, sizey=9):
     plt.show()
     
 def plot_overlay(df1, df2,  hist_name_to_view, f_type, sizex=15, sizey=9):
+    print("constructing hist1 data...")
     hist_one = df1[df1['f_type'] == f_type]
-    # f_name? paths?
     hist_one = hist_one[hist_one['paths'] == hist_name_to_view]
     
+    print("constructing hist2 data...")
     hist_two = df2[df2['f_type'] == f_type]
     hist_two = hist_two[hist_two['paths'] == hist_name_to_view]
     
@@ -429,22 +437,23 @@ if __name__ == "__main__":
     
     
     if args.dist:
-            df, errors = chi2df(args.file1, args.file2)
-            if args.htype == "TH1":
-                plot_dist_th1(df)
-            elif args.htype == "TH2":
-                plot_dist_th2(df)
-            elif args.htype == "TProfile":
-                plot_dist_tp(df)
+        df, errors = chi2df(args.file1, args.file2)
+        if args.htype == "TH1":
+            print("plotting th1....")
+            plot_dist_th1(df)
+        elif args.htype == "TH2":
+            plot_dist_th2(df)
+        elif args.htype == "TProfile":
+            plot_dist_tp(df)
                     
     elif args.chi2:
-            df, errors = chi2df(args.file1, args.file2)
-            if args.htype == "TH1":
-                plot_chi2_thi1(df)
-            elif args.htype == "TH2":
-                plot_chi2_th2(df)
-            elif args.htype == "TProfile":
-                plot_chi2_tp(df)
+        df, errors = chi2df(args.file1, args.file2)
+        if args.htype == "TH1":
+            plot_chi2_th1(df)
+        elif args.htype == "TH2":
+            plot_chi2_th2(df)
+        elif args.htype == "TProfile":
+            plot_chi2_tp(df)
             
     elif args.chi2norm:
         print("Calculating chi2 values...")
