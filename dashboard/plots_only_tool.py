@@ -220,7 +220,7 @@ def plot_dist_th2(df, bins=50, sizex=15, sizey=9):
     hist_data = [df_th2s['chi2ndf_vals'].values]
 
     plt.figure(figsize=(sizex,sizey))
-    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH2 Chi2/NDF', marker='o', color='blue')
+    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH2 Chi2/NDF', color='blue')
     plt.xlabel('Chi2/NDF')
     plt.ylabel('Frequency')
     plt.title('TH2 Chi2/NDF Distplot')
