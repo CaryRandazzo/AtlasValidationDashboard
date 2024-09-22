@@ -30,8 +30,7 @@ import ROOT
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-# TODO: Refactor processHistML and hist_to_df, similar to how validate_hist has been refactored.
-def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies):  
+def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies):  
     """
     Process ROOT runfile histogram to data.
     """
@@ -59,10 +58,10 @@ def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occ
             # Recursively go deeper into the file structure depending on the length of split_path
             if 'run' in split_path[-1]:
                 # We are 2 directories deep, go deeper
-                f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies = processHistML(input,file,f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies)  
+                f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies = process_hist_to_data(input,file,f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies)  
             elif len(split_path) > 2 and any(folder in split_path for folder in ('CaloMonitoring', 'Jets','MissingEt','Tau','egamma')):                
                 # We are greater than 3 directories deep and these directories include the specified folders above, goo deeper
-                f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies = processHistML(input,file,f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies)     
+                f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies = process_hist_to_data(input,file,f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies)     
             else:
                 pass
             
@@ -154,12 +153,12 @@ def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occ
 
 def hist_to_df(path):
     """
-    Converts ROOT histogram data from ProcessHistML() to a pandas dataframe.
+    Converts ROOT histogram data from process_hist_to_data() to a pandas dataframe.
     """
     
     file = ROOT.TFile.Open(path)
 
-    f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies = processHistML(file,file,'',[],[],[],[],[])
+    f_path, f_path_list, f_type_list, binNums,binNumsY, occupancies = process_hist_to_data(file,file,'',[],[],[],[],[])
     
     return pd.DataFrame({'paths':f_path_list,'f_type':f_type_list, 'x':binNums,'y':binNumsY,'occ':occupancies})
 
