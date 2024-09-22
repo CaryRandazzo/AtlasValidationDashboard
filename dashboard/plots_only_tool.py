@@ -75,16 +75,14 @@ def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occ
             
             # Record te path of the directory we are looking in with the name of the hist file as part of the path
             try:
-                f_path_tp = f_path + '/' + input.GetName()                
-            except:
-                print("cant GetPath3")
-            
-            # Get the part of f_path that follows the ':'
-            f_path_tp = f_path_tp.split(':')
-            if 'eos' in f_path_tp:
-                f_path_tp = f_path_tp[2][1:]
-            else:
-                f_path_tp = f_path_tp[1][1:]
+                if 'eos' in f_path:    
+                    f_path_tp = f_path + '/' + input.GetName()          
+                    f_path_tp = f_path_tp.split(':')[2][1:]
+                else:
+                    f_path_tp = f_path_tp.split(':')[1][1:]
+            except Exception as e:
+                print(e)
+                print("Unexpected error in TProfile.")
             
             hist_file = file.Get(f_path_tp)
             binsX = hist_file.GetNbinsX()                                    
@@ -101,18 +99,16 @@ def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occ
         elif issubclass(type(input),ROOT.TH2):
 
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
+            # Record te path of the directory we are looking in with the name of the hist file as part of the path
             try:
-                f_path_th2 = f_path + '/' + input.GetName()                
-            except:
-                print("cant GetPath3")
-            
-            # Get the part of f_path that follows the ':'
-            f_path_th2 = f_path_th2.split(':')
-            if 'eos' in f_path_th2:
-                f_path_th2 = f_path_th2[2][1:]
-            else:
-                f_path_th2 = f_path_th2[1][1:]
-            
+                if 'eos' in f_path:    
+                    f_path_th2 = f_path + '/' + input.GetName()          
+                    f_path_th2 = f_path_th2.split(':')[2][1:]
+                else:
+                    f_path_th2 = f_path_th2.split(':')[1][1:]
+            except Exception as e:
+                print(e)
+                print("Unexpected error in TH2.")
             
             hist_file = file.Get(f_path_th2)
             binsX = hist_file.GetNbinsX()                        
@@ -131,17 +127,16 @@ def processHistML(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occ
         elif issubclass(type(input),ROOT.TH1):
             
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
+            # Record te path of the directory we are looking in with the name of the hist file as part of the path
             try:
-                f_path_th1 = f_path + '/' + input.GetName()                
-            except:
-                print("cant GetPath2")
-
-            # Get the part of f_path that follows the ':'
-            f_path_th1 = f_path_th1.split(':')
-            if 'eos' in f_path_th1:
-                f_path_th1 = f_path_th1[2][1:]
-            else:
-                f_path_th1 = f_path_th1[1][1:]
+                if 'eos' in f_path:    
+                    f_path_th1 = f_path + '/' + input.GetName()          
+                    f_path_th1 = f_path_th1.split(':')[2][1:]
+                else:
+                    f_path_th1 = f_path_th1.split(':')[1][1:]
+            except Exception as e:
+                print(e)
+                print("Unexpected error in TH1.")
             
             hist_file = file.Get(f_path_th1)
             binsX = hist_file.GetNbinsX()            
