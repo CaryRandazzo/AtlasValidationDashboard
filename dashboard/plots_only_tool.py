@@ -5,35 +5,41 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import argparse
-# from replica_processor import *
 import replica_processor as rp
 import seaborn as sns
 import matplotlib.colors as mcolors
 import sys
+import logging
+from typing import Tuple, Optional, Dict, Any
 
+# Configure the system for logging
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def normalize_histogram(hist, ref_hist, option):
+def normalize_histogram(hist: pd.DataFrame, ref_hist: pd.DataFrame, option: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Normalize histogram based on the selected option.
 
     Args:
-        hist (TH1/TH2/TProfile): The histogram to normalize.
-        ref_hist (TH1/TH2/TProfile): The reference histogram for normalization.
+        hist (DataFrame): The histogram to normalize containing type TH1, TH2, or TProfile histograms.
+        ref_hist (DataFrame): The reference histogram for normalization containing type TH1, TH2, or TProfile histograms.
         option (str): The normalization option ('none', 'unit_area', 'same_entries', 'bin_width').
 
     Returns:
         None
     """
+
     if option == 'unit_area':
         if hist.Integral() != 0:
             hist.Scale(1.0 / hist.Integral())
         if ref_hist.Integral() != 0:
             ref_hist.Scale(1.0 / ref_hist.Integral())
+
     # Normalize to area of occupancies
     elif option == 'same_entries':
         hist_entries = hist.GetEntries()
         ref_entries = ref_hist.GetEntries()
         if ref_entries != 0:
             ref_hist.Scale(hist_entries / ref_entries)
+
     elif option == 'bin_width':
         for bin in range(1, hist.GetNbinsX() + 1):
             bin_width = hist.GetBinWidth(bin)
@@ -43,12 +49,134 @@ def normalize_histogram(hist, ref_hist, option):
             bin_width = ref_hist.GetBinWidth(bin)
             ref_hist.SetBinContent(bin, ref_hist.GetBinContent(bin) / bin_width)
             ref_hist.SetBinError(bin, ref_hist.GetBinError(bin) / bin_width)
+
     # No normalization needed for 'none' option
     return hist, ref_hist
 
-def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path_length, chi2_mode='CHI2/NDF', normalization_option=None):  
-    """Recursively validate the histograms in a root file and calculate the chi2 values between two root files.
 
+def get_f_path_at_histo_level(f_path: str, input: Optional[object]) -> Optional[str]:
+    """
+    Reformat the given file path at the histogram level by appending the name of the input object.
+    Args:
+        f_path (str): The base file path.
+        input (Optional[object]): An object that is expected to have a 'GetName' method.
+    Returns:
+        Optional[str]: The reformatted file path, or None if an error occurs.
+    Raises:
+        AttributeError: If the input object does not have a 'GetName' method.
+        IndexError: If the file path split does not return the expected format.
+        Exception: For any other unexpected errors.
+    """
+
+    # TODO: Verify this works locally and on lxplus
+    try:
+        # Reformat the path for the histogram
+        new_f_path = f_path + '/' + input.GetName()
+        
+        # Adjust the new_f_path if we are on lxplus vs locally running the script
+        if "eos" in new_f_path:
+            new_f_path = new_f_path.split(':')[2][1:] # On lxplus
+        else:
+            new_f_path = new_f_path.split(':')[1][1:]
+        return new_f_path
+    
+    # HAndle exceptions
+    except AttributeError as e:
+        logging.error(f"AttributeError: {e} - input object has no attribute 'GetName'")
+    except IndexError as e:
+        logging.error(f"IndexError: {e} - f_path_th1 split did not return expected format")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e} - can't format f_path_th1")
+
+    return None
+
+def calculate_chi2(file1: Any, file2: Any, hist_type: str, f_path_type: str, chi2_mode: str, chi2_dict: Dict[str, Any]) ->Tuple[Any, Dict[str, Any]]:
+    """
+    Calculate the chi-squared (chi2) value between two ROOT histogram files and update the chi2 dictionary.
+    Args:
+        file1 (Any): The first ROOT file containing the histogram.
+        file2 (Any): The second ROOT file containing the histogram.
+        hist_type (str): The type of histogram being compared.
+        f_path_type (pd.DataFrame): The path type in the DataFrame.
+        chi2_mode (str): The mode for chi2 calculation.
+        chi2_dict (Dict[str, Any]): Dictionary to store chi2 values and related information.
+    Returns:
+        Tuple[Any, Dict[str, Any]]: A tuple containing the chi2 value and the updated chi2 dictionary.
+    """
+
+    try:
+        # Calculate chi2 values given chi2_mode
+        chi2_val = file1.Get(f_path_type).Chi2Test(file2.Get(f_path_type), chi2_mode)
+
+        # Update chi2_dict
+        chi2_dict['f_name'].append(f_path_type)
+        chi2_dict['f_type'].append(hist_type)
+        chi2_dict['chi2ndf_vals'].append(chi2_val)
+
+        return chi2_val, chi2_dict
+    
+    # Handle errors
+    except KeyError as e:
+        logging.error(f"KeyError: {e} - key not found in chi2_dict")
+    except AttributeError as e:
+        logging.error(f"AttributeError: {e} - issue with accessing attributes of ROOT objects")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e} - while calculating chi2 values")    
+    # return None, None
+    return None, chi2_dict
+
+def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalization_option: Optional[str] = None) -> Tuple[Optional[Any], Optional[Any]]:
+    """
+    Preprocess histograms by retrieving them from the provided files, applying Sumw2 if necessary, 
+    and normalizing them based on the given normalization option.
+    Args:
+        file1 (Any): The first file containing the histogram.
+        file2 (Any): The second file containing the reference histogram.
+        f_path_type (str): The path type used to retrieve the histograms from the files.
+        normalization_option (Optional[str]): The option for normalizing the histograms. Default is None.
+    Returns:
+        Tuple[Optional[Any], Optional[Any]]: A tuple containing the processed histograms from file1 and file2.
+        Returns (None, None) if an error occurs during processing.
+    Raises:
+        AttributeError: If there is an issue with accessing attributes of histograms.
+        KeyError: If there is an issue with accessing histograms using the provided path.
+        ValueError: If there is an issue with the normalization option.
+        Exception: For any other unexpected errors during histogram preparation.
+    """
+
+
+    try:
+        # Get a handle for the hists
+        file1_hist = file1.Get(f_path_type)
+        ref_hist = file2.Get(f_path_type)
+        
+        # Sumw2 the hists if necessary
+        if not file1_hist.GetSumw2N():
+            file1_hist.Sumw2()
+        if not ref_hist.GetSumw2N():
+            ref_hist.Sumw2()
+        
+        # Normalize them if a normalization option is set
+        file1_hist, ref_hist = normalize_histogram(file1_hist, ref_hist, normalization_option)
+
+        return file1_hist, ref_hist
+    
+    # Handle exceptions
+    except AttributeError as e:
+        logging.error(f"AttributeError: {e} - issue with accessing attributes of histograms")
+    except KeyError as e:
+        logging.error(f"KeyError: {e} - issue with accessing histograms using path {f_path_type}")
+    except ValueError as e:
+        logging.error(f"ValueError: {e} - issue with normalization option {normalization_option}")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e} - while preparing histograms")
+
+    return None, None
+
+
+def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2_mode='',normalization_option=None):  
+    """
+    Recursively validate the histograms in a root file and calculate the chi2 values between two root files.
     Args:
         tf (TFile): The root file used for mapping the histograms.
         file1 (TFile): The first root file to compare. 
@@ -96,15 +224,14 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path
             # if len(split_path) == 2:
 
                 # We are 5 directories deep, go deeper
-                f_path,chi2_dict,n_th1,n_th2,n_tp,errors = validate_hists(input,file1, file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path_length, chi2_mode, normalization_option)  
+                f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2_mode, normalization_option)  
 
             # Path lengths greater than the specified number indicate a potential folder of interest from args.folders, check for these and go deeper if so
             elif len(split_path) > path_length and any(folder in split_path for folder in (args.folders)):                
             # elif len(split_path) > 2 and any(folder in split_path for folder in (args.folders)):                
                 
-		# We are greater than 3 directories deep and these directories include the specified folders above, goo deeper
-                f_path,chi2_dict,n_th1,n_th2,n_tp,errors = validate_hists(input,file1, file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path_length, chi2_mode, normalization_option)     
-
+		        # We are greater than 3 directories deep and these directories include the specified folders above, goo deeper
+                f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1, file2,f_path,chi2_dict,n_th1,n_th2,n_tp, path_length, chi2_mode, normalization_option)     
             
             # If the length is shorter than the specified number, than we need to continue the loop
             else:
@@ -123,34 +250,11 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path
             n_tp += 1                
             
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                f_path_tp = f_path + '/' + input.GetName()                
-            except:
-                print("can't get f_path_tp")
+            # with error handling.
+            f_path_tp = get_f_path_at_histo_level(f_path, input)
             
-            # Format f_path_tp
-            try:
-                # Get the part of f_path that follows the ':'
-                f_path_tp = f_path_tp.split(':')
-                f_path_tp = f_path_tp[1][1:]
-            except:
-                print("can't format f_path_tp")
-            
-            
-            
-            # Calculate the chi2 values and store them in chi2_dict
-            try:
-                # Calculate the chi2 value between file1's and file2's filename:f_name
-                # TODO: Change this to remove the ndf part as it takes options now
-                chi2ndf_val = file1.Get(f_path_tp).Chi2Test(file2.Get(f_path_tp), chi2_mode)
-                chi2_dict['f_name'].append(f_path_tp)
-                chi2_dict['f_type'].append('TProfile')
-                chi2_dict['chi2ndf_vals'].append(chi2ndf_val)
-            except Exception as e:            
-                errors +=1
-                print(f'chi2_tp error on filepath: {f_path_tp}')
-                print(e)
-
+            # Apply chi2 calculations to TProfile histogram data with error handling
+            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TProfile', f_path_tp, chi2_mode, chi2_dict)
         
         elif issubclass(type(input),ROOT.TH2):	    
             # The is a TH2 histogram
@@ -159,51 +263,15 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path
             n_th2 += 1            
 
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                f_path_th2 = f_path + '/' + input.GetName()                
-            except:
-                print("can't get f_path_th2")
-            
-            # Format f_path_th2 
-            try:
-	        # Get the part of f_path that follows the ':'
-                f_path_th2 = f_path_th2.split(':')
-                f_path_th2 = f_path_th2[1][1:]
-            except:
-                print("can't format f_path_th2")
+            f_path_th2 = get_f_path_at_histo_level(f_path, input)
         
-            # Sumw2 and Normalize the histograms
-            # TODO: fix this and put in TH1 and TProfile as necessary
-            try:
-                file1_hist = file1.Get(f_path_th2)
-                ref_hist = file2.Get(f_path_th2)
-                
-                if not file1_hist.GetSumw2N():
-                    file1_hist.Sumw2()
-                if not ref_hist.GetSumw2N():
-                    ref_hist.Sumw2()
-                
-                file1_hist, ref_hist = normalize_histogram(file1_hist, ref_hist, normalization_option)
-                    
-            except Exception as e:
-                print("Error in sumw2/norming TH2 histograms halting execution...")
-                print(e)
-                # sys.exit()
             
-	    # Calculate the chi2 values and store them in chi2_dict
-            try:
-                # TODO: Change this to remove the ndf part as it takes options now
-                # Calculate the chi2 value between file1's and file2's filename:f_name
-                chi2ndf_val = file1.Get(f_path_th2).Chi2Test(file2.Get(f_path_th2), chi2_mode)
-                chi2_dict['f_name'].append(f_path_th2)
-                chi2_dict['f_type'].append('TH2')
-                # TODO: change this to chi2_vals
-                chi2_dict['chi2ndf_vals'].append(chi2ndf_val)
-            except Exception as e:            
-                errors +=1
-                print(f'chi2_th2 error on filepath: {f_path_th2}')
-                print(e)
-                
+            # TODO: fix this and put in TH1 and TProfile as necessary
+            # Sumw2 and Normalize the histograms
+            preprocess_histograms(file1, file2, f_path_th2, normalization_option)
+	        
+            # Apply chi2 calculations to TProfile histogram data with error handling
+            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2_mode, chi2_dict)         
                 
         elif issubclass(type(input),ROOT.TH1):
             # TODO: Sumw2? normalization? check dqm_algs         
@@ -213,84 +281,71 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,errors, path
             n_th1 += 1
             
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                f_path_th1 = f_path + '/' + input.GetName()                
-            except:
-                print("cant GetPath2")
+            f_path_th1 = get_f_path_at_histo_level(f_path, input)
 
-            # Format f_path_th1
-            try:
-                # Get the part of f_path that follows the ':'
-                f_path_th1 = f_path_th1.split(':')
-                f_path_th1 = f_path_th1[1][1:]
-            except:
-                print("can't format f_path_th1")
+            # Apply chi2 calculations to TProfile histogram data with error handling
+            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH1', f_path_th1, chi2_mode, chi2_dict)
 
-            # Calculate the chi2 values and store them in chi2_dict
-            try:
-                # TODO: Change this to remove the ndf part as it takes options now
-                # Calculate the chi2 value between file1's and file2's filename:f_name
-                chi2ndf_val = file1.Get(f_path_th1).Chi2Test(file2.Get(f_path_th1), chi2_mode)
-                chi2_dict['f_name'].append(f_path_th1)
-                chi2_dict['f_type'].append('TH1')
-                chi2_dict['chi2ndf_vals'].append(chi2ndf_val)
-            except Exception as e:
-                print(e)            
-                errors +=1
-                print(f'chi2 error on filepath: {f_path_th1}')
-            
+    return f_path, chi2_dict, n_th1, n_th2,n_tp
 
-    return f_path, chi2_dict, n_th1, n_th2,n_tp, errors
+def get_root_file(file_path: str) -> Any:
+    """
+    Opens a ROOT file from the given file path.
+    Args:
+        file_path (str): The path to the ROOT file to be opened.
+    Returns:
+        Any: The opened ROOT file object, or None if an error occurs.
+    Raises:
+        Exception: If there is an error opening the ROOT file, it will be caught and printed.
+    """
+    
+    # Get root file
+    try:
+        file = ROOT.TFile.Open(file_path)
+        if not file or file.IsZombie():
+            raise IOError(f"Failed to open file: {file_path}")
+        path_length = len(file.GetPath().split('/'))
+        return file, path_length
+    
+    # Handle errors
+    except IOError as e:
+        logging.error(f"IOError: {e} - Could not open ROOT file at {file_path}")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e} - while opening ROOT file at {file_path}")
 
-
+    return None
 
 # Modified version for standalone
-def chi2df(file_path, ref_path, chi2_mode, normalization_option=None):
-    """Calculates the chi2 values for the histograms in two root files and returns a dataframe of the results.
-
+def chi2df(file_path: str, ref_path: str, chi2_mode: str='', normalization_option:str=None) -> Tuple[pd.DataFrame, int]:
+    """
+    Calculates the chi2 values for the histograms in two root files and returns a dataframe of the results.
     Args:
         file_path (string): Path to the first root file.
         ref_path (string): Path to the second root file.
 
     Returns:
-        df, errors (Dataframe, int): The dataframe containing the chi2 values of the histograms and the number of errors encountered.
+        df (Dataframe): The dataframe containing the chi2 values of the histograms.
     """
+    
+    # Access the root file at file_path
+    file, path_length = get_root_file(file_path)
 
-    # Get root file
-    try:
-        file = ROOT.TFile.Open(file_path)
-        # print(len(file.GetPath().split('/')))
-    except Exception as e:
-        print(f'root "file" error: {e}')
+    # Access the root file at ref_path
+    ref_file, _ = get_root_file(ref_path)
 
-
-    # Get root ref
-    try:
-        ref = ROOT.TFile.Open(ref_path)
-        path_length = len(ref.GetPath().split('/'))
-        # print(len(ref.GetPath().split('/')))
-    except Exception as e:
-        print(f'root "ref" file error: {e}')
-        
-
+    # TODO: change chi2ndf_vals to to chi2_vals
     # Calculate the chi2 values and other relevant information for the comparison
-    if normalization_option:
-        # TODO: change chi2ndf_vals to to chi2_vals
-        f_path, chi2_dict,n_th1,n_th2,n_tp,errors = validate_hists(file, file, ref,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,0, path_length, chi2_mode, normalization_option)
-    else:
-        # TODO: change chi2ndf_vals to to chi2_vals
-        f_path, chi2_dict,n_th1,n_th2,n_tp,errors = validate_hists(file, file, ref,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,0, path_length, chi2_mode, "")
+    f_path, chi2_dict,n_th1,n_th2,n_tp = validate_hists(file, file, ref_file,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,path_length,chi2_mode,normalization_option)
 
     # Construct the dataframe
     df = pd.DataFrame(chi2_dict)
 
-    return df, errors
+    return df
 
 
-
-def plot_dist_th1(df, bins=10000, sizex=15, sizey=9):
-    """Plots the distribution of Chi2/NDF values for TH1 histograms.
-
+def plot_dist_th1(df: pd.DataFrame, mode: str, bins:int=10000, sizex:int=15, sizey:int=9):
+    """
+    Plots the distribution of Chi2/NDF values for TH1 histograms.
     Args:
         df (Dataframe): The dataframe containing the chi2 values of the TH1 histograms.
         bins (int, optional): The number of bins to use for the histogram. Defaults to 10000.
@@ -305,16 +360,16 @@ def plot_dist_th1(df, bins=10000, sizex=15, sizey=9):
 
     plt.figure(figsize=(sizex,sizey))
     # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH1 Chi2/NDF', color='blue') # marker = ?
-    plt.xlabel('Chi2/NDF')
+    plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH1 Chi2:{mode} freq', color='blue') # marker = ?
+    plt.xlabel(f'{mode}')
     plt.ylabel('Frequency')
-    plt.title('TH1 Chi2/NDF Distplot')
+    plt.title(f'TH1 Chi2:{mode} Distplot')
     plt.legend(loc='upper right')
     plt.show()
     
-def plot_dist_th2(df, bins=50, sizex=15, sizey=9):
-    """Plots the distribution of Chi2/NDF values for TH2 histograms.
-
+def plot_dist_th2(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:int=9):
+    """
+    Plots the distribution of Chi2/NDF values for TH2 histograms.
     Args:
         df (Dataframe): The dataframe containing the chi2 values of the TH2 histograms.
         bins (int, optional): The number of bins to use for the histogram. Defaults to 50.
@@ -327,18 +382,19 @@ def plot_dist_th2(df, bins=50, sizex=15, sizey=9):
     # TODO: hcange this
     hist_data = [df_th2s['chi2ndf_vals'].values]
 
+    print("plotting th2 data...")
     plt.figure(figsize=(sizex,sizey))
     # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, label='TH2 Chi2/NDF', color='blue')
-    plt.xlabel('Chi2/NDF')
+    plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH2 Chi2:{mode} freq', color='blue')
+    plt.xlabel(f'Chi2:{mode}')
     plt.ylabel('Frequency')
-    plt.title('TH2 Chi2/NDF Distplot')
+    plt.title(f'TH2 Chi2:{mode} Distplot')
     plt.legend(loc='upper right')
     plt.show()
     
-def plot_dist_tps(df, bins=50, sizex=15, sizey=9):
-    """Plots the distribution of Chi2/NDF values for TProfile histograms.
-
+def plot_dist_tps(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:int=9):
+    """
+    Plots the distribution of Chi2 values for TProfile histograms.
     Args:
         df (Dataframe): The dataframe containing the chi2 values of the TProfile histograms.
         bins (int, optional): The number of bins to use for the histogram. Defaults to 50.
@@ -351,20 +407,21 @@ def plot_dist_tps(df, bins=50, sizex=15, sizey=9):
     # TODO: change this
     hist_data = [df_tp['chi2ndf_vals'].values]    
 
-    plt.figure(figsize=(10,6))
+    print("plotting tp data...")
+    plt.figure(figsize=(sizex,sizey))
     # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label='TProfile Chi2/NDF')
-    plt.xlabel('Chi2/NDF')
+    plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label=f'TProfile Chi2:{mode} freq')
+    plt.xlabel(f'Chi2:{mode}')
     plt.ylabel('Frequency')
-    plt.title('TProfile Chi2/NDF Distplot')
+    plt.title(f'TProfile Chi2:{mode} Distplot')
     plt.legend(loc='upper right')
     plt.grid(True)
     plt.show()
     
     
-def plot_diffs(df1, df2,  hist_name_to_view, f_type, sizex=15, sizey=9):
-    """Plots the differences of a selected histogram between the values of a root file and a reference root file.
-
+def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_type: str, sizex:int=15, sizey:int=9):
+    """
+    Plots the differences of a selected histogram between the values of a root file and a reference root file.
     Args:
         df1 (Dataframe): This is the first collection of histograms of f_type from the given root file.
         df2 (Dataframe): This is the second collection of histograms of f_type from the given root REFERENCE file.
@@ -429,11 +486,11 @@ def plot_diffs(df1, df2,  hist_name_to_view, f_type, sizex=15, sizey=9):
         plt.grid(True)
         plt.show()
     
-def plot_chi2_th1s(df_th1, sizex=15, sizey=9):
-    """_summary_
-
+def plot_chi2_th1s(df_th1: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+    """
+    Plot chi2 values calculated from the TH1 histograms between file1 and file2.
     Args:
-        df_th1 (_type_): _description_
+        df_th1 (DataFrame): _description_
         sizex (int, optional): _description_. Defaults to 15.
         sizey (int, optional): _description_. Defaults to 9.
     """
@@ -443,16 +500,15 @@ def plot_chi2_th1s(df_th1, sizex=15, sizey=9):
     # TODO: change this to chi2_vals
     plt.scatter(df_th1['f_name'], df_th1['chi2ndf_vals'], marker='o', color='blue')
     plt.xlabel('Hist Name')
-    # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.ylabel('Chi2/NDF')
-    plt.title('TH1 Chi2/NDF values by hist, Normed over area')
+    plt.ylabel(f'Chi2:{mode}')
+    plt.title(f'TH1 Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def plot_chi2_th2s(df_th2, sizex=15, sizey=9):
-    """Plot the chi2 values of TH2 histograms with various options calculated from given args.
-
+def plot_chi2_th2s(df_th2: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+    """
+    Plot the chi2 values of TH2 histograms with various options calculated from given args.
     Args:
         df_th2 (Dataframe): Dataframe containing the Chi2 values of the TH2 histograms.
         sizex (int, optional): The x-axis figsize of the plot. Defaults to 15.
@@ -468,17 +524,17 @@ def plot_chi2_th2s(df_th2, sizex=15, sizey=9):
     plt.scatter(df_th2['f_name'], df_th2['chi2ndf_vals'], marker='o', color='blue')
     plt.xlabel('Hist Name')
     # TODO: change this
-    plt.ylabel('Chi2/NDF')
-    plt.title('TH2 Chi2/NDF values by hist, Normed over area')
+    plt.ylabel(f'Chi2:{mode}')
+    plt.title(f'TH2 Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def plot_chi2_tps(df_tp, sizex=15, sizey=9):
-    """_summary_
-
+def plot_chi2_tps(df_tp: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+    """
+    Plot chi2 values of TProfile histograms with various options calculated from given args.
     Args:
-        df_tp (_type_): _description_
+        df_tp (DataFrame): DataFrame of TProfile histograms' data.
         sizex (int, optional): _description_. Defaults to 15.
         sizey (int, optional): _description_. Defaults to 9.
     
@@ -491,36 +547,74 @@ def plot_chi2_tps(df_tp, sizex=15, sizey=9):
     plt.scatter(df_tp['f_name'], df_tp['chi2ndf_vals'], marker='o', color='blue')
     plt.xlabel('Hist Name')
     # TODO: change this
-    plt.ylabel('Chi2/NDF')
-    plt.title('TProfile Chi2/NDF values by hist, Normed over area')
+    plt.ylabel(f'Chi2:{mode}')
+    plt.title(f'TProfile Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def process_normalization_args(args, mode=None):
+def process_normalization_args(args, mode:Optional[str]=None) -> pd.DataFrame:
+    """
+    Processes the normalization arguments and returns the chi2 dataframe based on the provided arguments.
+    Args:
+        args (Namespace): A namespace object containing the following attributes:
+            - file (str): The file path to the data file.
+            - ref (str): The reference data.
+            - norm (bool): A flag indicating whether normalization should be applied.
+        mode (str, optional): The mode in which to process the normalization. Defaults to None.
+    Returns:
+        DataFrame: The chi2 dataframe processed based on the provided arguments.
+    Prints:
+        str: Messages indicating the processing steps and whether normalization is applied.
+    """
+
     print("Processing the chi2 dataframe...")
     if mode is not None:
         if args.norm:
+            print(f"Normalizing {args.norm} and Processing histogram datafile...")
             return chi2df(args.file, args.ref, mode, args.norm)
         else:
-            return chi2df(args.file, args.ref, mode, )
+            print("Processing histogram datafile no norm...")
+            return chi2df(args.file, args.ref, mode)
     elif args.norm:
+        print(f"Normalizing {args.norm}, no mode...")
         return chi2df(args.file, args.ref, args.norm)
     else:
-        print("No normalization applied.")
+        print("Processing histogram datafile, no mode no norm...")
         return chi2df(args.file, args.ref)
     
-def integral_normalize_histogram(hist_data):
-    """Normalizes the chi2 values specifically. not the raw values."""
+def integral_normalize_histogram(hist_data: Dict[str, Any]) -> Any:
+    """
+    Normalize the chi-squared values in the histogram data by their integral.
+    This function takes a dictionary containing chi-squared values and normalizes
+    them by dividing each value by the sum of all chi-squared values. If the sum
+    (integral) is zero, the original chi-squared values are returned to avoid
+    division by zero.
+    Parameters:
+    hist_data (dict): A dictionary containing the key 'chi2ndf_vals' which maps to
+                      an array-like structure of chi-squared values.
+    Returns:
+    numpy.ndarray: An array of normalized chi-squared values.
+    """
+
+    # Get the Chi2 values
     chi2_vals = hist_data['chi2ndf_vals'].values
+    
+    # Get the integral as the sum of magnitude of Chi2 values
     integral = sum(chi2_vals)
+
+    # If that is 0, no need to scale them
     if integral == 0:
         return chi2_vals
+    
+    # Otherwise, scale them according to the integral
     return chi2_vals / integral
+
 
 if __name__ == "__main__":
     
-    print("NOTE: files must be in the working directory of this script to work properly!")
+    # TODO: verify if they do or do not need to be in the working directory
+    print("NOTE: files may need to be in the working directory of this script to work properly! (Update pending)")
     
     # Set the ROOT ignore level to ignore warnings
     ROOT.gErrorIgnoreLevel = ROOT.kWarning
@@ -529,7 +623,48 @@ if __name__ == "__main__":
     plt.style.use('seaborn-v0_8-darkgrid')
     
     # Define the argument parser
-    parser = argparse.ArgumentParser(description='Required: Plot histograms and chi2 values for two root files')
+    parser = argparse.ArgumentParser(
+        description='Required: Plot histograms and chi2 values for two root files',
+        epilog='''
+        Calculate and analyze histogram data for validation using this tool.\n\n\n\n
+
+        1. The --file argument is required and should be the path to the root file.
+        2. The --ref argument is required and should be the path to the reference root file.
+        3. The --htype argument is required and should be the type of histograms to view results about.
+        4. The --folders argument is required and should be a list of folders to analyze. Provide at least one folder 
+        such as "--folders Tau egamma".
+        5. The --mode argument is required and should be set to either 'dist', 'chi2', or 'diff' to display distribution of chi2 values, 
+        chi2 values directory, or differences of actual values respectively.
+        6. The --norm argument is OPTIONAL and can be set to 'unit_area', 'occ_area', 'same_entries', 'bin_width', or it can be left out for no applied normalization.
+        7. The --hname argument is required when using --diff and should be the full path from run_XXXXXXXX/etc/to/name_of_the_histogram to plot.
+        Specific histogram hnames can be discovered in "--mode dist" or "--mode chi2" when mousing over plot values (see corner of plot).
+        8a. The --uu argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histograms. Can combine with some other options.
+        8b. The --uw argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histogram for the first histogram and weighted histogram for the second histogram. Can combine with some other options.
+        8c. The --ww argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use weighted histograms. Can combine with some other options.
+        8d. The --p argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use the p-values. Can combine with some other options.
+        8e. The --perndf argument is an OPTIONAL (chi2 or diff only) parameter and can be used to calculate chi2 per degree of freedom. Can combine with some other options.
+
+        Example hname commands when using "--mode diff":
+            (Example TH1 histogram for --hname when using --diff)
+            --hname 'run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+            
+            (Example hname for TH2 histogram for --hname when using --diff)
+            --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
+
+            (Example hname for TProfile histogram for --hname when using --diff)
+            --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/CellsXEta
+    
+        Full Commands Examples:
+            (When running the script locally)
+            python plots_only_tool_refactored.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+            python plots_only_tool_refactored.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+        (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
+            python plots_only_tool_refactored.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TProfile --folders CaloMonitoring Jets MissingEt Tau egamma --mode chi2 --perndf
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    # Define the required arguments
     parser.add_argument('--file', type=str, help='Required: Path to the root file.', required=True)
     parser.add_argument('--ref', type=str, help='Required: Path to the reference root file.', required=True)
     parser.add_argument('--htype', type=str, choices=['TH1', 'TH2', 'TProfile'], help='Required: Choose the type of histograms to view results about.', required=True)
@@ -546,15 +681,15 @@ if __name__ == "__main__":
     parser.add_argument('--p', action='store_true', help='Optional for chi2 or dist: Use the p-values. Can combine with some other options.')
     parser.add_argument('--perndf', action='store_true', help='Optional for chi2 or dist: Calculate chi2 per degree of freedom. Can combine with some other options.')
     
+    # Parse the arguments
     args = parser.parse_args()
     
     
-    ##################
-    # ARG PROCESSING #
-    ##################
+    ###################
+    # ARGS PROCESSING #
+    ###################
     
     # Handle mode error
-    # if (args.uu or args.uw or args.ww or args.p or args.perndf) and not (args.dist or args.chi2):
     if (args.uu or args.uw or args.ww or args.p or args.perndf) and not (args.mode=='dist' or args.mode=='chi2'):
         parser.error("--uu, --uw, --ww, --p, and --perndf require either --mode dist or --mode chi2 to be specified.")
     
@@ -566,10 +701,10 @@ if __name__ == "__main__":
     print(f"histogram type:{args.htype}")
     print(f"folders: {args.folders}")
     
-    # Construct the mode option for Chi2Test based on various mode options given by user
-    # if either chi2 or dist was given as an option.
+    
+    # Processing for chi2options is triggered when "--mode chi2" or "--mode dist" is selected
     if args.mode=='chi2' or args.mode=='dist':
-        
+        # Construct the chi2options for Chi2Test based on various mode options given by user
         chi2options = ""
         if args.perndf:
             chi2options += "CHI2/NDF"
@@ -621,7 +756,7 @@ if __name__ == "__main__":
             "CHI2/NDF WW P"
         ]
     
-    
+    # Continue displaying the remainder of the user set configurations when running the script
     if args.mode == 'dist':
         print("dist selected.")
     if args.mode == 'chi2':
@@ -643,72 +778,73 @@ if __name__ == "__main__":
     if args.hname:
         print(f"histogram name: {args.hname} selected.")
     
-    
     # Line break for clarity before processing
     print()
         
         
-    # Process the required data for the plots
+    # Process the required data for the plots when in "--mode" dist or "--mode chi2"
     if args.mode == 'dist' or args.mode == 'chi2':
         
         # Process normalization args
         try:
-            df, errors = process_normalization_args(args, chi2options)
+            df = process_normalization_args(args, chi2options)
         except NameError:
-            df, errors = process_normalization_args(args)
+            df = process_normalization_args(args)
             
-        
-    # Plot either the distribution or Chi2 values with set options of TH1,TH2, or TProfile histograms
-    if args.htype == "TH1":
-        
-        print("Getting TH1 data...")
-        df_th1 = df[df['f_type']=='TH1']
-        
-        if args.norm == 'occ_area':
-            print("Normalizing TH1 Chi2 vals to occupancy area...")
-            chi2_normed_vals = integral_normalize_histogram(df_th1)
-            df_th1.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+    # Process the program when in "--mode chi2"
+    if not args.mode=='diff':
+        # Plot either the distribution or Chi2 values with set options of TH1,TH2, or TProfile histograms
+        if  args.htype == "TH1":
             
-        print("Plotting TH1 histograms...")
-        if args.mode == 'dist':
-            plot_dist_th1(df_th1)
+            print("Getting TH1 data...")
+            df_th1 = df[df['f_type']=='TH1']
             
-        elif args.mode == 'chi2':
-            plot_chi2_th1s(df_th1)
+            if args.norm == 'occ_area':
+                print("Normalizing TH1 Chi2 vals to occupancy area...")
+                chi2_normed_vals = integral_normalize_histogram(df_th1)
+                df_th1.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                
+            print("Plotting TH1 histograms...")
+            if args.mode == 'dist':
+                plot_dist_th1(df_th1, chi2options)
+                
+            elif args.mode == 'chi2':
+                plot_chi2_th1s(df_th1, chi2options)
+                
+        elif args.htype == "TH2":
             
-    elif args.htype == "TH2":
-        
-        print("Getting TH2 data...")
-        df_th2 = df[df['f_type']=='TH2']
-        
-        if args.norm == 'occ_area':
-            print("Normalizing TH2 Chi2 vals to occupancy area...")
-            chi2_normed_vals = integral_normalize_histogram(df_th2)
-            df_th2.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+            print("Getting TH2 data...")
+            df_th2 = df[df['f_type']=='TH2']
             
-        print("Plotting TH2 histograms...")
-        if args.mode == 'dist':
-            plot_dist_th2(df_th2)
+            if args.norm == 'occ_area':
+                print("Normalizing TH2 Chi2 vals to occupancy area...")
+                chi2_normed_vals = integral_normalize_histogram(df_th2)
+                df_th2.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                
+            print("Plotting TH2 histograms...")
+            if args.mode == 'dist':
+                plot_dist_th2(df_th2, chi2options)
+                
+            elif args.mode == 'chi2':
+                plot_chi2_th2s(df_th2, chi2options)
+                
+        elif args.htype == "TProfile":
             
-        elif args.mode == 'chi2':
-            plot_chi2_th2s(df_th2)
+            print("Getting TProfile data...")
+            df_tp = df[df['f_type']=='TProfile']
+            if args.norm == 'occ_area':
+                print("Normalizing TProfile Chi2 vals to occupancy area...")
+                chi2_normed_vals = integral_normalize_histogram(df_tp)
+                df_tp.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                
+            print("Plotting TProfile histograms...")
+            if args.mode == 'dist':
+                plot_dist_tps(df_tp, chi2options)
+                
+            elif args.mode == 'chi2':
+                plot_chi2_tps(df_tp, chi2options)
             
-    elif args.htype == "TProfile":
-        
-        print("Getting TProfile data...")
-        df_tp = df[df['f_type']=='TProfile']
-        if args.norm == 'occ_area':
-            print("Normalizing TProfile Chi2 vals to occupancy area...")
-            chi2_normed_vals = integral_normalize_histogram(df_tp)
-            df_tp.loc[:,'chi2ndf_vals'] = chi2_normed_vals
-            
-        print("Plotting TProfile histograms...")
-        if args.mode == 'dist':
-            plot_dist_tps(df_tp)
-            
-        elif args.mode == 'chi2':
-            plot_chi2_tps(df_tp)
-            
+    # Process the program when in "--mode diff"
     if args.mode == 'diff':
         
         if not args.hname:
@@ -722,44 +858,3 @@ if __name__ == "__main__":
         
         print("Plotting difference values...")
         plot_diffs(file_data, ref_data, args.hname, args.htype)
-    
-    
-    # FOR TESTING
-    # VERSION 0.1
-    
-    # Make sure when you test a command you have the correct htype for the histogram hname you have set!
-    
-    # hist_name = 'run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute'
-    # hist_type = 'TH1'
-    
-    # hist_name = 'run_472943/Tau/Calo/Tau_Calo_centFracVsLB'
-    # hist_type = 'TH2'
-    
-    # hist_name = run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/CellsXEta
-    # hist_type = 'TProfile'
-    
-    # example command:
-    #  (OLD) python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
-    #  python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
-    
-    # VERSION 1.0
-    
-    # lxplus -> lsetup python, lsetup root
-    # python plots_only_tool.py ...and the options
-    # python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --chi2 --perndf --norm occ_area
-    
-    # VERSION 1.2
-    # file: data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1
-    # ref: data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root
-    # htype: TH1'
-    # mode: chi2
-    # norm: occ_area
-    # optional: perndf
-    # python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders CaloMonitoring Jets MissingEt Tau egamma --chi2 --perndf --norm occ_area
-    
-    # ON LXPLUS
-    # python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders CaloMonitoring Jets MissingEt Tau egamma --mode chi2 --perndf --norm occ_area
-    # Appears i need x11 running to display the plots on lxplus
-    
-    # TODO: try to programmatically, automatically get the path_length for validate_histogram function instead of it
-    # required to be local to the working directory.
