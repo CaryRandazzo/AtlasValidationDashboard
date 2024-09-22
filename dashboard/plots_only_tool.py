@@ -774,28 +774,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Required: Plot histograms and chi2 values for two root files',
         epilog='''
-        Calculate and analyze histogram data for validation using this tool.\n\n\n\n
+        Summary:
+            Calculate and analyze histogram data for validation using this tool.\n\n\n\n
 
-        1. The --file argument is required and should be the path to the root file.
-        2. The --ref argument is required and should be the path to the reference root file.
-        3. The --htype argument is required and should be the type of histograms to view results about.
-        4. The --folders argument is required and should be a list of folders to analyze. Provide at least one folder 
-        such as "--folders Tau egamma".
-        5. The --mode argument is required and should be set to either 'dist', 'chi2', or 'diff' to display distribution of chi2 values, 
-        chi2 values directory, or differences of actual values respectively.
-        6. The --norm argument is OPTIONAL and can be set to 'unit_area', 'occ_area', 'same_entries', 'bin_width', or it can be left out for no applied normalization.
-        7. The --hname argument is required when using --diff and should be the full path from run_XXXXXXXX/etc/to/name_of_the_histogram to plot.
-        Specific histogram hnames can be discovered in "--mode dist" or "--mode chi2" when mousing over plot values (see corner of plot).
-        8a. The --uu argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histograms. Can combine with some other options.
-        8b. The --uw argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histogram for the first histogram and weighted histogram for the second histogram. Can combine with some other options.
-        8c. The --ww argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use weighted histograms. Can combine with some other options.
-        8d. The --p argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use the p-values. Can combine with some other options.
-        8e. The --perndf argument is an OPTIONAL (chi2 or diff only) parameter and can be used to calculate chi2 per degree of freedom. Can combine with some other options.
+        Required: 
+            - This script requires X11 installed on Linux, X11Server on Windows, or XQuartz on Mac to display on your local machine after running the command on lxplus.
+            - You must have logged into lxplus with the -Y option for the plots to display on your local machine after running the command on lxplus.
+              For example, on linux running "sudo apt-get update" followed by "sudo apt-get install xorg openbox" has successfully setup X11 on the Author's Linux machine.
+
+        Command walkthrough:
+            1. The --file argument is REQUIRED and should be the path to the root file.
+            2. The --ref argument is REQUIRED and should be the path to the reference root file.
+            3. The --htype argument is REQUIRED and should be the type of histograms to view results about.
+            4. The --folders argument is REQUIRED and should be a list of folders to analyze. Provide at least one folder 
+            such as "--folders Tau egamma".
+            5. The --mode argument is REQUIRED and should be set to either 'dist', 'chi2', or 'diff' to display distribution of chi2 values, 
+            chi2 values directory, or differences of actual values respectively.
+            6. The --norm argument is OPTIONAL and can be set to 'unit_area', 'occ_area', 'same_entries', 'bin_width', or it can be left out for no applied normalization.
+            7. The --hname argument is REQUIRED WHEN USING --diff and should be the full path from run_XXXXXXXX/etc/to/name_of_the_histogram to plot.
+            Specific histogram hnames can be discovered in "--mode dist" or "--mode chi2" when mousing over plot values (see corner of plot).
+            8a. The --uu argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histograms. Can combine with some other options.
+            8b. The --uw argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use unweighted histogram for the first histogram and weighted histogram for the second histogram. Can combine with some other options.
+            8c. The --ww argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use weighted histograms. Can combine with some other options.
+            8d. The --p argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use the p-values. Can combine with some other options.
+            8e. The --perndf argument is an OPTIONAL (chi2 or diff only) parameter and can be used to calculate chi2 per degree of freedom. Can combine with some other options.
 
         Example hname commands when using "--mode diff":
             (Example TH1 histogram for --hname when using --diff)
             --hname 'run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
-            
+
             (Example hname for TH2 histogram for --hname when using --diff)
             --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
 
@@ -804,10 +811,10 @@ if __name__ == "__main__":
     
         Full Commands Examples:
             (When running the script locally)
-            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
-            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonito>
+            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitorin>
         (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
-            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TProfile --folders CaloMonitoring Jets MissingEt Tau egamma --mode chi2 --perndf
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13>
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
