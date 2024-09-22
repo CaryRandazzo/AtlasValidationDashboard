@@ -761,9 +761,6 @@ def integral_normalize_histogram(hist_data: Dict[str, Any]) -> Any:
 
 if __name__ == "__main__":
     
-    # TODO: verify if they do or do not need to be in the working directory
-    print("NOTE: files may need to be in the working directory of this script to work properly! (Update pending)")
-    
     # Set the ROOT ignore level to ignore warnings
     ROOT.gErrorIgnoreLevel = ROOT.kWarning
     
@@ -772,10 +769,9 @@ if __name__ == "__main__":
     
     # Define the argument parser
     parser = argparse.ArgumentParser(
-        description='Required: Plot histograms and chi2 values for two root files',
+        description='Calculate and analyze histogram data for validation using this tool.',
         epilog='''
-        Summary:
-            Calculate and analyze histogram data for validation using this tool.\n\n\n\n
+        --- Additional Information ---
 
         Required: 
             - This script requires X11 installed on Linux, X11Server on Windows, or XQuartz on Mac to display on your local machine after running the command on lxplus.
@@ -838,6 +834,9 @@ if __name__ == "__main__":
     
     # Parse the arguments
     args = parser.parse_args()
+
+    # TODO: verify if they do or do not need to be in the working directory
+    print("NOTE: files may need to be in the working directory of this script to work properly! (Update pending)")
     
     
     ###################
