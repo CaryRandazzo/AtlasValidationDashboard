@@ -806,7 +806,7 @@ if __name__ == "__main__":
             --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/CellsXEta
     
         Full Commands Examples:
-            (When running the script locally)
+        (When running the script locally)
             python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonito>
             python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitorin>
         (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
