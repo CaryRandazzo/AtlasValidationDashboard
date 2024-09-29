@@ -29,7 +29,6 @@ import ROOT
 # Configure the system for logging
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies):  
     """
     Process ROOT runfile histogram to data.
@@ -73,15 +72,7 @@ def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNum
         elif issubclass(type(input), ROOT.TProfile):
             
             # Record te path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                if 'eos' in f_path:    
-                    f_path_tp = f_path + '/' + input.GetName()          
-                    f_path_tp = f_path_tp.split(':')[2][1:]
-                else:
-                    f_path_tp = f_path_tp.split(':')[1][1:]
-            except Exception as e:
-                print(e)
-                print("Unexpected error in TProfile.")
+            f_path_tp = get_f_path_at_histo_level(f_path, input)
             
             hist_file = file.Get(f_path_tp)
             binsX = hist_file.GetNbinsX()                                    
@@ -99,15 +90,7 @@ def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNum
 
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
             # Record te path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                if 'eos' in f_path:    
-                    f_path_th2 = f_path + '/' + input.GetName()          
-                    f_path_th2 = f_path_th2.split(':')[2][1:]
-                else:
-                    f_path_th2 = f_path_th2.split(':')[1][1:]
-            except Exception as e:
-                print(e)
-                print("Unexpected error in TH2.")
+            f_path_th2 = get_f_path_at_histo_level(f_path, input)
             
             hist_file = file.Get(f_path_th2)
             binsX = hist_file.GetNbinsX()                        
@@ -127,15 +110,7 @@ def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNum
             
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
             # Record te path of the directory we are looking in with the name of the hist file as part of the path
-            try:
-                if 'eos' in f_path:    
-                    f_path_th1 = f_path + '/' + input.GetName()          
-                    f_path_th1 = f_path_th1.split(':')[2][1:]
-                else:
-                    f_path_th1 = f_path_th1.split(':')[1][1:]
-            except Exception as e:
-                print(e)
-                print("Unexpected error in TH1.")
+            f_path_th1 = get_f_path_at_histo_level(f_path, input)
             
             hist_file = file.Get(f_path_th1)
             binsX = hist_file.GetNbinsX()            
@@ -291,9 +266,22 @@ def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalizatio
         Exception: For any other unexpected errors during histogram preparation.
     """
 
+    # TODO: Implement normalization according to Sawyer/dqm_algorithms. The 1D chi2 method does not show normalization so it may not be necessary, confirm this
+    # TODO: HOWEVER, the 2D normalization does exist and exists in a specific way. Look up that algorithm and implement it here at minimum.
+    
 
     try:
-        # Get a handle for the hists
+        # TODO: This is one of the main issues, we are not looking to normalize a single histogram at a time as we iterate through the root file UNLESS WE ARE OUTPUTTING ONE HISTOGRAM AT A TIME
+        # The question is... is it even possible/proper/practical to normalize all histograms at the same time? IT appears in dqm algorithms the chi2_2d algorithm normalizes the input_hist vs ref_hist
+        # So what that algorithm is actually doing is for a specific histogram, it is normalizing the input vs ref as I said, but it is returning the bins with highest chi2 values. This happens for one hist
+        # Another question: Is it intended use of the Chi2Test method to input two entire histograms then output a single chi2 value?
+        # The documentation on Chi2Test for TH1 in ROOT says that it "Returns a p-value" by "comparing the histograms' (normalized) residuals"
+        # THUS,
+        # 1. we do not need to normalize the functions using the chi2test in 1d such as th1s and tps as we have not included any normalization, that should be fine as is.
+        # 2. we need to implement an algorithm that normalizes the histograms for the 2d chi2test, this is the only place where manual normalization is necessary.
+        # Then it is best to normalize it the same way that they do in the algorithm, but they do it one histogram at a time rather than over the entire TH2.
+        # * It appears the Chi2_2D algorithm gives you the Chi2 values per bin according to his math, similarly for the regular Chi2_scatterplot, but Chi2Test returns the pvalue of the entire histogram
+        # My plots are showing pvalues calculated from Chi2/NDF not the Chi2/NDF values themselves...which would make no sense as those are collections of values (check understanding)
         file1_hist = file1.Get(f_path_type)
         ref_hist = file2.Get(f_path_type)
         
@@ -415,7 +403,7 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             
             # TODO: fix this and put in TH1 and TProfile as necessary
             # Sumw2 and Normalize the histograms
-            preprocess_histograms(file1, file2, f_path_th2, normalization_option)
+            file1_hist, ref_hist = preprocess_histograms(file1, file2, f_path_th2, normalization_option)
 	        
             # Apply chi2 calculations to TProfile histogram data with error handling
             chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2_mode, chi2_dict)         
@@ -591,8 +579,14 @@ def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_
         
         # Prepare plot of TH1 difference values
         plt.figure(figsize=(sizex,sizey))
-        plt.plot(hist_one['x'], hist_two['occ']-hist_one['occ'], marker='o', color='blue')
-        plt.scatter(hist_one['x'], hist_two['occ']-hist_one['occ'], marker='o', color='blue')
+        plt.plot(hist_one['x'], hist_two['occ'].values-hist_one['occ'].values, marker='o', color='blue')
+        plt.scatter(hist_one['x'], hist_two['occ'].values-hist_one['occ'].values, marker='o', color='blue')
+        #plt.plot(hist_one['x'], hist_one['occ'], marker='o', color='blue')
+        #plt.scatter(hist_one['x'], hist_one['occ'], marker='o', color='blue')
+        #plt.plot(hist_two['x'], hist_two['occ'], marker='o', color='red')
+        #plt.scatter(hist_two['x'], hist_two['occ'], marker='o', color='red')
+        #plt.hist(hist_one['occ'], bins=50, alpha=0.7, label=f'TH1 Chi2:{hist_name_to_view} freq', color='blue')
+        #plt.hist(hist_two['occ'], bins=50, alpha=0.7, label=f'TH1 Chi2:{hist_name_to_view} freq', color='red')
         plt.title(f'TH1-Diffs:{hist_name_to_view} (data=ref-file)')
         plt.xlabel(r'$\eta$')
         plt.ylabel('Occupancy')
@@ -773,6 +767,7 @@ if __name__ == "__main__":
         --- Additional Information ---
 
         Required: 
+            - Packages required for this are not available on the current asetup package list. Please use "lsetup python" and "lsetup root" to prepare the environment first. Follow any suggestions it returns.
             - This script requires X11 installed on Linux, X11Server on Windows, or XQuartz on Mac to display on your local machine after running the command on lxplus.
             - You must have logged into lxplus with the -Y option for the plots to display on your local machine after running the command on lxplus.
               For example, on linux running "sudo apt-get update" followed by "sudo apt-get install xorg openbox" has successfully setup X11 on the Author's Linux machine.
@@ -795,21 +790,21 @@ if __name__ == "__main__":
             8e. The --perndf argument is an OPTIONAL (chi2 or diff only) parameter and can be used to calculate chi2 per degree of freedom. Can combine with some other options.
 
         Example hname commands when using "--mode diff":
-            (Example TH1 histogram for --hname when using --diff)
+            (Example TH1 histogram for --hname when using --mode diff)
             --hname 'run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
 
-            (Example hname for TH2 histogram for --hname when using --diff)
+            (Example hname for TH2 histogram for --hname when using --mode diff)
             --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
 
-            (Example hname for TProfile histogram for --hname when using --diff)
+            (Example hname for TProfile histogram for --hname when using --mode diff)
             --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/CellsXEta
     
-        Full Commands Examples:
+        Full Commands Examples: (NOT UPDATED -- IGNORE TEMPORARILY)
         (When running the script locally)
-            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --overlay --hname run_472943/CaloMonito>
-            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --diff --hname run_472943/CaloMonitorin>
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders Tau egamma --mode diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders Calomonitoring egamma --mode chi2 --norm occ_area --perndf
         (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
-            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13>
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/calo/Tau_Calo_centFracVsLB
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -820,7 +815,7 @@ if __name__ == "__main__":
     parser.add_argument('--htype', type=str, choices=['TH1', 'TH2', 'TProfile'], help='Required: Choose the type of histograms to view results about.', required=True)
     parser.add_argument('--folders', nargs='+', required=True,
                         help='Required: List of folders to analyze. Provide at least one folder.')
-    parser.add_argument('--mode', type=str, choices=['dist', 'chi2', 'diff'], help='Required: Set plot mode to distrubution, chi2, or value differences.', required=True)
+    parser.add_argument('--mode', type=str, choices=['dist', 'chi2', 'diff'], help='Required: Set plot mode to distribution, chi2, or value differences.', required=True)
     
     # Add additional arguments for various modes
     parser.add_argument('--norm', type=str, choices=['unit_area', 'occ_area', 'same_entries', 'bin_width', ''], default="", help='Optional for chi2 or dist:Normalization mode as either {None, unit_area, same_entries, bin_width}.')
@@ -954,7 +949,7 @@ if __name__ == "__main__":
             
             if args.norm == 'occ_area':
                 print("Normalizing TH1 Chi2 vals to occupancy area...")
-                chi2_normed_vals = integral_normalize_histogram(df_th1)
+                chi2_normed_vals = integral_normalize_histogram(df_th1) # Normalizes the chi2_val occupancies
                 df_th1.loc[:,'chi2ndf_vals'] = chi2_normed_vals
                 
             print("Plotting TH1 histograms...")
