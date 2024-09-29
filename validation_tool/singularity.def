@@ -1,0 +1,35 @@
+# Singularity container .def file
+# Use this if you want to construct the avd-tool-container.sif directly instead of converting from docker container
+# In practice, I converted it from docker container on dockerhub to a sif using the following command
+# singularity build avd-tool-container.sif docker://rdccdr/dockerhub:avd-tool-env   # (what i called it on dockerhub or w/e)
+
+
+Bootstrap: docker
+From: condaforge/miniforge3
+
+%post
+    # Update conda and create the Python environment
+    conda update -n base -c defaults conda -y
+    conda create -n myenv python=3.12.4 -y
+    
+    # Activate the environment and install the required packages
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate myenv
+    conda install -c conda-forge root=6.32.2 matplotlib=3.9.1 seaborn=0.13.2 pandas=2.2.2 -y
+
+%environment
+    # Set up the environment for the container
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate myenv
+    export PATH="/opt/conda/envs/myenv/bin:$PATH"
+
+%runscript
+    # Start an interactive bash shell by default
+    exec /bin/bash
+
+%labels
+    Author YourName
+    Version v1.0
+
+%help
+    This is a Singularity container for a Python environment with ROOT, matplotlib, seaborn, and pandas installed using Conda.
