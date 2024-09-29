@@ -73,29 +73,30 @@ sudo docker build -t atl-tool-env .
 ```bash
 docker run -it --rm atl-tool-env
 ```
-4. try to logout of docker: 
+4. At this point please see the documentation on setting up docker-desktop and dockerhub for linux on its own specific documentation. After doing so, please continue with the following steps
+5. try to logout of docker: 
 ```bash
 docker logout
 ```
-5. login to docker: docker 
+6. login to docker: docker 
 ```bash
 login -u <your_username>, enter password
 ```
-6. Change tags to expected docker hub format:
+7. Change tags to expected docker hub format:
 ```bash
 docker tag avd-tool-env:latest rdccdr/avd-tool-env # try this first, or
 docker tag avd-tool-env:latest rdccdr/dockerhub:avd-tool-env
 ```
-7. Push the image to dockerhub
+8. Push the image to dockerhub
 ```bash
 docker push rdccdr/avd-tool-env:latest
 ```
-8. On your local machine, make sure singularity is installed (see singaulrity_setup.sh, best to consult their docs, it requires installing go and a host of things) UNLESS you already have singularity installed on a linux machine
-9. Convert the docker container to a singularity image with singularity now installed
+9. On your local machine, make sure singularity is installed (see singaulrity_setup.sh, best to consult their docs, it requires installing go and a host of things) UNLESS you already have singularity installed on a linux machine
+10. Convert the docker container to a singularity image with singularity now installed
 ```bash
 singularity build avd-tools-container.sif docker://rdccdr/dockerhub:avd-tools-env # This is the current format/name/tag it exists on my dockerhub, not sure if i can remove the dockerhub part
 ```
-10. Upload that image to lxplus in some accessible location
+11. Upload that image to lxplus in some accessible location
 ```bash
 scp avd-tools-container.sif username@lxplus.cern.ch:/path/to/your/directory
 ```
@@ -104,19 +105,19 @@ scp avd-tools-container.sif username@lxplus.cern.ch:/path/to/your/directory
 
 If the avd-tools-container.sif already is built and exists on lxplus, start your steps here. If not, start at step 1 above to build and push the container to lcplus
 
-11. Now, login to lxplus with 
+12. Now, login to lxplus with 
 ```bash
 ssh -Y username@lxplus.cern.ch
 ```
-12. make sure that X11/XQuarts/X11server etc has properly forwarded your display
+13. make sure that X11/XQuarts/X11server etc has properly forwarded your display
 ```bash
 echo $DISPLAY # should show something like   "localhost" or ":0" or something
 ```
-13. Next, we do not want to execute commands to the .sif container, we want to drop into a shell directly (I may or may have created a run_avd_tools_container.sh script to simplify this command)
+14. Next, we do not want to execute commands to the .sif container, we want to drop into a shell directly (I may or may have created a run_avd_tools_container.sh script to simplify this command)
 ```bash
 apptainer shell path/to/avd-tools-container.sif # No sure when/how the apptainer command got substituted, but theres documentation of when i used those commands in the .sh files, may need to use
 singularity shell path/to/avd-tools-container.sif
 ```
-14. If all goes well, then you will be in the container at /afs/cern.ch/user/<your_first_username_letter>/<your_username> which will have access to the datafiles you have stored there. It should also have access to other afs areas that are public (as it is linked to afs). The container itself may contain a copy of plots_only_tool.py (verify this) if so run that. If not, navigate to /afs/cern.ch/user/c/crandazz/public for plots_only_tool.py
+15. If all goes well, then you will be in the container at /afs/cern.ch/user/<your_first_username_letter>/<your_username> which will have access to the datafiles you have stored there. It should also have access to other afs areas that are public (as it is linked to afs). The container itself may contain a copy of plots_only_tool.py (verify this) if so run that. If not, navigate to /afs/cern.ch/user/c/crandazz/public for plots_only_tool.py
 
-15. Finally, with the path for plots_only_tool.py in hand and being inside the container, you can run plots_only_tool.py -h to get documentation on how to run the script and its specific commands to do the validation
+16. Finally, with the path for plots_only_tool.py in hand and being inside the container, you can run plots_only_tool.py -h to get documentation on how to run the script and its specific commands to do the validation
