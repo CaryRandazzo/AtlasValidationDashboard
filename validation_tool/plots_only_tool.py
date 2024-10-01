@@ -29,6 +29,8 @@ import ROOT
 # Configure the system for logging
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# TODO: Consider adding error handling for when you are given --hname histogram_name/etc/etc and the histogram does not exist in the root file (will need to map a list of histograms and slow down the recursion though maybe)
+
 def process_hist_to_data(tf,file,f_path,f_path_list, f_type_list, binNums,binNumsY, occupancies):  
     """
     Process ROOT runfile histogram to data.
@@ -282,6 +284,8 @@ def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalizatio
         # Then it is best to normalize it the same way that they do in the algorithm, but they do it one histogram at a time rather than over the entire TH2.
         # * It appears the Chi2_2D algorithm gives you the Chi2 values per bin according to his math, similarly for the regular Chi2_scatterplot, but Chi2Test returns the pvalue of the entire histogram
         # My plots are showing pvalues calculated from Chi2/NDF not the Chi2/NDF values themselves...which would make no sense as those are collections of values (check understanding)
+        # 3. Look into creating a get_p_value() function that works like the output of Chi2Test but for an input 2D histogram. This is roughly the area/sum of the chi2 values of the histogram and we can get our typical
+        # chi2 p-value plot from that as it loops through all the histograms as usual.
         file1_hist = file1.Get(f_path_type)
         ref_hist = file2.Get(f_path_type)
         
@@ -378,8 +382,7 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             f_path = '/'.join(f_path[:-1])
                 
         elif issubclass(type(input), ROOT.TProfile):
-            # TODO: Sumw2? normalization?, check dqm_algs
-            # The is a TProfile 
+            # Sumw2 and normalization is handled via Chi2Test method already, no need to implement here
 
             # Increment the number of TProfiles variable n_tp
             n_tp += 1                
@@ -409,8 +412,7 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2_mode, chi2_dict)         
                 
         elif issubclass(type(input),ROOT.TH1):
-            # TODO: Sumw2? normalization? check dqm_algs         
-            # This is a TH1 histogram
+            # Sumw2 and normalization is handled via Chi2Test method already, no need to implement here
 
             # Increment the number of TH2s in variable n_th1
             n_th1 += 1
@@ -514,7 +516,7 @@ def plot_dist_th2(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:
     
     print("constructing th2 data...")
     df_th2s = df[df['f_type']=='TH2']
-    # TODO: hcange this
+    # TODO: change this
     hist_data = [df_th2s['chi2ndf_vals'].values]
 
     print("plotting th2 data...")
@@ -598,7 +600,7 @@ def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_
         
         # Calculate and format plotting data for TH2 difference values
         hist_tmp = pd.DataFrame({'x':hist_one['x'], 'y':hist_one['y'], 'occ':hist_two['occ'].values-hist_one['occ'].values})
-        pivot_table = hist_tmp.pivot(index='x', columns='y', values='occ')
+        pivot_table = hist_tmp.pivot(index='y', columns='x', values='occ') # Align y on the horizontal to be more like a ROOT histogram
         
         # Prepare plot parameters
         colors = [(0, 0, 1), (0, 1, 0), (1, 1, 0), (1, 0, 0)]  # Blue -> Green -> Yellow -> Red
@@ -608,7 +610,7 @@ def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_
         
         # Plot the heatmap of differences
         plt.figure(figsize=(sizex,sizey))
-        sns.heatmap(pivot_table)
+        sns.heatmap(pivot_table, cmap=root_cmap)
         plt.title(f'TH2-Diffs-2D:{hist_name_to_view},\n shown_value=ref_value-file_value')
         plt.xlabel(r'$\eta$')
         plt.ylabel(r'$\phi$')
@@ -766,8 +768,8 @@ if __name__ == "__main__":
         epilog='''
         --- Additional Information ---
 
-        Required: 
-            - Packages required for this are not available on the current asetup package list. Please use "lsetup python" and "lsetup root" to prepare the environment first. Follow any suggestions it returns.
+        Required:
+            - Running with the singularity avd-tool-container.sif simply requires executing ". run_avd_tool_env.sh" in the terminal.
             - This script requires X11 installed on Linux, X11Server on Windows, or XQuartz on Mac to display on your local machine after running the command on lxplus.
             - You must have logged into lxplus with the -Y option for the plots to display on your local machine after running the command on lxplus.
               For example, on linux running "sudo apt-get update" followed by "sudo apt-get install xorg openbox" has successfully setup X11 on the Author's Linux machine.
@@ -802,9 +804,12 @@ if __name__ == "__main__":
         Full Commands Examples: (NOT UPDATED -- IGNORE TEMPORARILY)
         (When running the script locally)
             python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders Tau egamma --mode diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
-            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders Calomonitoring egamma --mode chi2 --norm occ_area --perndf
+            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders Tau egamma --mode diff --hname run_472943/CaloMonitoring/TileCellMon_NoTrigSel/General/Summary/TIME_execute
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders CaloMonitoring egamma --mode chi2 --norm occ_area --perndf
+            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --htype TH1 --folders CaloMonitoring egamma --mode chi2 --norm occ_area --perndf
         (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
-            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/calo/Tau_Calo_centFracVsLB
+            python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
+            python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
