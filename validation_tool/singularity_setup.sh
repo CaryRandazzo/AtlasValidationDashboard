@@ -25,7 +25,7 @@ sudo tar -C /usr/local -xzf go1.18.10.linux-amd64.tar.gz
 echo 'export PATH=/usr/local/go/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 
-# Download and install sinngularity
+# Download and install singularity
 export VERSION=4.2.1  # Use the latest version available
 wget https://github.com/apptainer/singularity/releases/download/v${VERSION}/singularity-${VERSION}.tar.gz
 

@@ -15,7 +15,8 @@
 #
 # For usage instructions and examples, run "python plots_only_tool.py --help".
 #
-# Note: This script requires the ROOT, pandas, matplotlib, and seaborn libraries. It has been tested with conda.
+# NOTE: This script requires the ROOT, pandas, matplotlib, and seaborn libraries. It has been tested with conda.
+# NOTE: chi2options and normalziation_option are not the same! The former is constructed from a combination of optional parameters while the latter is a single optional parameter "--norm"
 
 import argparse
 import logging
@@ -139,6 +140,7 @@ def hist_to_df(path):
     
     return pd.DataFrame({'paths':f_path_list,'f_type':f_type_list, 'x':binNums,'y':binNumsY,'occ':occupancies})
 
+
 def normalize_histogram(hist: pd.DataFrame, ref_hist: pd.DataFrame, option: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Normalize histogram based on the selected option.
 
@@ -214,7 +216,8 @@ def get_f_path_at_histo_level(f_path: str, input: Optional[object]) -> Optional[
 
     return None
 
-def calculate_chi2(file1: Any, file2: Any, hist_type: str, f_path_type: str, chi2_mode: str, chi2_dict: Dict[str, Any]) ->Tuple[Any, Dict[str, Any]]:
+# def calculate_chi2(file1: Any, file2: Any, hist_type: str, f_path_type: str, chi2options: str, chi2_dict: Dict[str, Any]) ->Tuple[Any, Dict[str, Any]]:
+def calculate_chi2(file1: Any, file2: Any, hist_type: str, f_path_type: str, chi2options: str, output_val_dict: Dict[str, Any]) ->Tuple[Any, Dict[str, Any]]:
     """
     Calculate the chi-squared (chi2) value between two ROOT histogram files and update the chi2 dictionary.
     Args:
@@ -222,34 +225,50 @@ def calculate_chi2(file1: Any, file2: Any, hist_type: str, f_path_type: str, chi
         file2 (Any): The second ROOT file containing the histogram.
         hist_type (str): The type of histogram being compared.
         f_path_type (pd.DataFrame): The path type in the DataFrame.
-        chi2_mode (str): The mode for chi2 calculation.
-        chi2_dict (Dict[str, Any]): Dictionary to store chi2 values and related information.
+        chi2options (str): The optional return parameter for chi2 calculation.
+        output_val_dict (Dict[str, Any]): Dictionary to store chi2 values and related information.
     Returns:
-        Tuple[Any, Dict[str, Any]]: A tuple containing the chi2 value and the updated chi2 dictionary.
+        output_val, output_val_dict (Tuple[Any, Dict[str, Any]]): A tuple containing the chi2 value and the updated chi2 dictionary.
     """
+    
+    
 
     try:
-        # Calculate chi2 values given chi2_mode
-        chi2_val = file1.Get(f_path_type).Chi2Test(file2.Get(f_path_type), chi2_mode)
+        # Calculate chi2 values given chi2options
+        if hist_type == 'TH2':
+            # chi2_val = chi2_test_2d(args, chi2options, file1, file2, f_path_type, chi2options)
+            output_val = chi2_test_2d(args, chi2options, file1, file2, f_path_type, chi2options)
+        else:
+            # chi2_val = file1.Get(f_path_type).Chi2Test(file2.Get(f_path_type), chi2options)
+            output_val = file1.Get(f_path_type).Chi2Test(file2.Get(f_path_type), chi2options)
 
         # Update chi2_dict
-        chi2_dict['f_name'].append(f_path_type)
-        chi2_dict['f_type'].append(hist_type)
-        chi2_dict['chi2ndf_vals'].append(chi2_val)
+        # chi2_dict['f_name'].append(f_path_type)
+        # chi2_dict['f_type'].append(hist_type)
+        # chi2_dict['chi2ndf_vals'].append(chi2_val)
+        output_val_dict['f_name'].append(f_path_type)
+        output_val_dict['f_type'].append(hist_type)
+        output_val_dict['output_vals'].append(output_val)
 
-        return chi2_val, chi2_dict
+        return output_val, output_val_dict
     
     # Handle errors
     except KeyError as e:
-        logging.error(f"KeyError: {e} - key not found in chi2_dict")
+        logging.error(f"KeyError: {e} - key not found in output_val_dict")
     except AttributeError as e:
         logging.error(f"AttributeError: {e} - issue with accessing attributes of ROOT objects")
     except Exception as e:
         logging.error(f"Unexpected error: {e} - while calculating chi2 values")    
     # return None, None
-    return None, chi2_dict
+    # return None, chi2_dict
+    return None, output_val_dict
 
-def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalization_option: Optional[str] = None) -> Tuple[Optional[Any], Optional[Any]]:
+
+class InsufficientStatisticsError(Exception):
+    """Custom exception for insufficient statistics in the histogram."""
+    pass
+
+def chi2_test_2d(args: Any, chi2options: str, file1: Any, file2: Any, f_path_type: str, normalization_option: Optional[str] = None, min_stat=1) -> Tuple[Optional[Any], Optional[Any]]:
     """
     Preprocess histograms by retrieving them from the provided files, applying Sumw2 if necessary, 
     and normalizing them based on the given normalization option.
@@ -258,6 +277,7 @@ def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalizatio
         file2 (Any): The second file containing the reference histogram.
         f_path_type (str): The path type used to retrieve the histograms from the files.
         normalization_option (Optional[str]): The option for normalizing the histograms. Default is None.
+        min_stat (int): The minimum number of entries required for the histogram. Default is 1.
     Returns:
         Tuple[Optional[Any], Optional[Any]]: A tuple containing the processed histograms from file1 and file2.
         Returns (None, None) if an error occurs during processing.
@@ -268,37 +288,81 @@ def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalizatio
         Exception: For any other unexpected errors during histogram preparation.
     """
 
-    # TODO: Implement normalization according to Sawyer/dqm_algorithms. The 1D chi2 method does not show normalization so it may not be necessary, confirm this
-    # TODO: HOWEVER, the 2D normalization does exist and exists in a specific way. Look up that algorithm and implement it here at minimum.
-    
+    # TODO: consider outputting error statistics for this chi2 method similar to the chi2_2d method (review this with people individuals helping to test script)
 
     try:
-        # TODO: This is one of the main issues, we are not looking to normalize a single histogram at a time as we iterate through the root file UNLESS WE ARE OUTPUTTING ONE HISTOGRAM AT A TIME
-        # The question is... is it even possible/proper/practical to normalize all histograms at the same time? IT appears in dqm algorithms the chi2_2d algorithm normalizes the input_hist vs ref_hist
-        # So what that algorithm is actually doing is for a specific histogram, it is normalizing the input vs ref as I said, but it is returning the bins with highest chi2 values. This happens for one hist
-        # Another question: Is it intended use of the Chi2Test method to input two entire histograms then output a single chi2 value?
-        # The documentation on Chi2Test for TH1 in ROOT says that it "Returns a p-value" by "comparing the histograms' (normalized) residuals"
-        # THUS,
-        # 1. we do not need to normalize the functions using the chi2test in 1d such as th1s and tps as we have not included any normalization, that should be fine as is.
-        # 2. we need to implement an algorithm that normalizes the histograms for the 2d chi2test, this is the only place where manual normalization is necessary.
-        # Then it is best to normalize it the same way that they do in the algorithm, but they do it one histogram at a time rather than over the entire TH2.
-        # * It appears the Chi2_2D algorithm gives you the Chi2 values per bin according to his math, similarly for the regular Chi2_scatterplot, but Chi2Test returns the pvalue of the entire histogram
-        # My plots are showing pvalues calculated from Chi2/NDF not the Chi2/NDF values themselves...which would make no sense as those are collections of values (check understanding)
-        # 3. Look into creating a get_p_value() function that works like the output of Chi2Test but for an input 2D histogram. This is roughly the area/sum of the chi2 values of the histogram and we can get our typical
-        # chi2 p-value plot from that as it loops through all the histograms as usual.
-        file1_hist = file1.Get(f_path_type)
+        # Get the histogram at f_path_type from the root file(s)
+        hist_2d = file1.Get(f_path_type)
         ref_hist = file2.Get(f_path_type)
         
-        # Sumw2 the hists if necessary
-        if not file1_hist.GetSumw2N():
-            file1_hist.Sumw2()
+        # Get handles for the histograms' shapes
+        hist_2d_n_bins_x = hist_2d.GetNbinsX()
+        hist_2d_n_bins_y = hist_2d.GetNbinsY()
+        ref_hist_n_bins_x = ref_hist.GetNbinsX()
+        ref_hist_n_bins_y = ref_hist.GetNbinsY()
+        
+        # Get handles for the histograms' entries
+        hist_2d_entries = hist_2d.GetEntries()
+        ref_hist_entries = ref_hist.GetEntries()
+        
+        # Ensure the histograms have the same shape
+        assert hist_2d_n_bins_x == ref_hist_n_bins_x and hist_2d_n_bins_y == ref_hist_n_bins_y, "Observed and reference histograms must have the same shape"
+        
+        # Check if the histograms have enough statistics
+        if hist_2d_entries < min_stat:
+            raise InsufficientStatisticsError(f"Insufficient entries in the observed histogram: {hist_2d_entries} < {min_stat}. Execution halted.")
+        
+        # TODO: Decide if we should use this method and add "norm_to_hist2d" as a normalization option in normalize_histogram OR as we are currently set, normalize with sumw2-> scale entries to the same as hist_2d
+        # Normalize them if a normalization option is set
+        # file1_hist, ref_hist = normalize_histogram(file1_hist, ref_hist, normalization_option)
+        
+        print("Using default normalization method for this configuration (sumw2->scale to hist_2d entries)...")
+        # Get the errors as sqrt(n)
+        if not hist_2d.GetSumw2N():
+            hist_2d.Sumw2()
         if not ref_hist.GetSumw2N():
             ref_hist.Sumw2()
+        # Scale the reference histograms to the same number of entries as the input histogram 
+        ref_hist.Scale(hist_2d_entries/ref_hist_entries)
         
-        # Normalize them if a normalization option is set
-        file1_hist, ref_hist = normalize_histogram(file1_hist, ref_hist, normalization_option)
-
-        return file1_hist, ref_hist
+        # Calculate chi2 value for each bin
+        total_chi2_val = 0
+        ndf = 0
+        # TODO: Something is unusual about this code, NSigma is calculated from p_value, but it was given from a config parameter. How was that config paremeter calcluated without looping through and getting
+        # the p_value for the histograms? And yet, its using the n_sigma it got from the config during calculating the chi2 values. So what comes first, the p_value or the n_sigma?
+        # For now, I will temporarily comment out the n_sigma and p_value calculations and just calculate the chi2 values
+        # vals_over_threshold = []
+        for i in range(hist_2d_n_bins_x):
+            for j in range(hist_2d_n_bins_y):
+                error_squared = (hist_2d.GetBinError(i,j)**2 + ref_hist.GetBinError(i,j)**2)
+                if error_squared > 0.000001:
+                    chi2_val_at_ij = (hist_2d.GetBinContent(i,j) - ref_hist.GetBinContent(i,j))**2 / error_squared
+                else:
+                    print(f"Insufficient statistics in bin ({i},{j}). Continuing...")
+                    # raise InsufficientStatisticsError(f"Insufficient statistics in bin ({i},{j})")
+                    continue
+                
+                total_chi2_val = total_chi2_val + chi2_val_at_ij
+                ndf += 1
+                # p_value = ROOT.TMath.Prob(total_chi2_val, ndf)
+                # n_sigma = ROOT.TMath.NormQuantile(1 - p_value)
+                # if total_chi2_val >= n_sigma**2:
+                    # vals_over_threshold.append(total_chi2_val)
+                    
+        p_value = ROOT.TMath.Prob(total_chi2_val, ndf)
+        
+        # Adjust the ndf down by 1 after counting
+        ndf -= 1
+        # And calculate the final chi2_per_ndf value
+        chi2_per_ndf = total_chi2_val / ndf
+                                  
+        if "P" in chi2options:
+            return p_value
+        elif "NDF" in chi2options:
+            return chi2_per_ndf
+        # This condition should be last as all modes will be set to chi2, but if --p or --perndf is set, it will return those values first
+        else:
+            return total_chi2_val
     
     # Handle exceptions
     except AttributeError as e:
@@ -313,7 +377,8 @@ def preprocess_histograms(file1: Any, file2: Any, f_path_type: str, normalizatio
     return None, None
 
 
-def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2_mode='',normalization_option=None):  
+# def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2options='',normalization_option=None):  
+def validate_hists(tf,file1,file2,f_path,output_val_dict,n_th1,n_th2,n_tp,path_length,chi2options='',normalization_option=None):  
     """
     Recursively validate the histograms in a root file and calculate the chi2 values between two root files.
     Args:
@@ -321,7 +386,7 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
         file1 (TFile): The first root file to compare. 
         file2 (TFile): The second root file to compare.
         f_path (string): The path of the current directory in the root file.
-        chi2_dict (dict): A dictionary containing the chi2 values of the histograms.
+        output_val_dict (dict): A dictionary containing the chi2 values of the histograms.
         n_th1 (int): The number of TH1 histograms.
         n_th2 (int): The number of TH2 histograms.
         n_tp (int): The number of TProfile histograms. 
@@ -363,14 +428,16 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             # if len(split_path) == 2:
 
                 # We are 5 directories deep, go deeper
-                f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2_mode, normalization_option)  
+                # f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,chi2options, normalization_option)  
+                f_path,output_val_dict,n_th1,n_th2,n_tp = validate_hists(input,file1,file2,f_path,output_val_dict,n_th1,n_th2,n_tp,path_length,chi2options, normalization_option)  
 
             # Path lengths greater than the specified number indicate a potential folder of interest from args.folders, check for these and go deeper if so
             elif len(split_path) > path_length and any(folder in split_path for folder in (args.folders)):                
             # elif len(split_path) > 2 and any(folder in split_path for folder in (args.folders)):                
                 
 		        # We are greater than 3 directories deep and these directories include the specified folders above, goo deeper
-                f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1, file2,f_path,chi2_dict,n_th1,n_th2,n_tp, path_length, chi2_mode, normalization_option)     
+                # f_path,chi2_dict,n_th1,n_th2,n_tp = validate_hists(input,file1, file2,f_path,chi2_dict,n_th1,n_th2,n_tp, path_length, chi2options, normalization_option)     
+                f_path,output_val_dict,n_th1,n_th2,n_tp = validate_hists(input,file1, file2,f_path,output_val_dict,n_th1,n_th2,n_tp, path_length, chi2options, normalization_option)     
             
             # If the length is shorter than the specified number, than we need to continue the loop
             else:
@@ -392,7 +459,8 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             f_path_tp = get_f_path_at_histo_level(f_path, input)
             
             # Apply chi2 calculations to TProfile histogram data with error handling
-            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TProfile', f_path_tp, chi2_mode, chi2_dict)
+            # chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TProfile', f_path_tp, chi2options, chi2_dict)
+            output_val, output_val_dict = calculate_chi2(file1, file2, 'TProfile', f_path_tp, chi2options, output_val_dict)
         
         elif issubclass(type(input),ROOT.TH2):	    
             # The is a TH2 histogram
@@ -403,13 +471,11 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             # Record the path of the directory we are looking in with the name of the hist file as part of the path
             f_path_th2 = get_f_path_at_histo_level(f_path, input)
         
-            
-            # TODO: fix this and put in TH1 and TProfile as necessary
-            # Sumw2 and Normalize the histograms
-            file1_hist, ref_hist = preprocess_histograms(file1, file2, f_path_th2, normalization_option)
-	        
-            # Apply chi2 calculations to TProfile histogram data with error handling
-            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2_mode, chi2_dict)         
+            # Apply chi2 calculations to TH2 histogram data with error handling
+            # (Normalize via Sumw2 and scale ref hist by the 2d hist)
+            # (Calculate and return a choice of p_value, chi2_value, or chi2_per_ndf)
+            # chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2options, chi2_dict)
+            output_val, output_val_dict = calculate_chi2(file1, file2, 'TH2', f_path_th2, chi2options, output_val_dict)
                 
         elif issubclass(type(input),ROOT.TH1):
             # Sumw2 and normalization is handled via Chi2Test method already, no need to implement here
@@ -421,9 +487,11 @@ def validate_hists(tf,file1,file2,f_path,chi2_dict,n_th1,n_th2,n_tp,path_length,
             f_path_th1 = get_f_path_at_histo_level(f_path, input)
 
             # Apply chi2 calculations to TProfile histogram data with error handling
-            chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH1', f_path_th1, chi2_mode, chi2_dict)
+            # chi2_val, chi2_dict = calculate_chi2(file1, file2, 'TH1', f_path_th1, chi2options, chi2_dict)
+            output_val, output_val_dict = calculate_chi2(file1, file2, 'TH1', f_path_th1, chi2options, output_val_dict)
 
-    return f_path, chi2_dict, n_th1, n_th2,n_tp
+    # return f_path, chi2_dict, n_th1, n_th2,n_tp
+    return f_path, output_val_dict, n_th1, n_th2,n_tp
 
 def get_root_file(file_path: str) -> Any:
     """
@@ -453,12 +521,14 @@ def get_root_file(file_path: str) -> Any:
     return None
 
 # Modified version for standalone
-def chi2df(file_path: str, ref_path: str, chi2_mode: str='', normalization_option:str=None) -> Tuple[pd.DataFrame, int]:
+def chi2df(file_path: str, ref_path: str, chi2options: str='', normalization_option:str=None) -> Tuple[pd.DataFrame, int]:
     """
     Calculates the chi2 values for the histograms in two root files and returns a dataframe of the results.
     Args:
-        file_path (string): Path to the first root file.
-        ref_path (string): Path to the second root file.
+        file_path (str): Path to the first root file.
+        ref_path (str): Path to the second root file.
+        chi2options (str): The optional return parameter for chi2 or dist modes. Defaults to ''.
+        
 
     Returns:
         df (Dataframe): The dataframe containing the chi2 values of the histograms.
@@ -470,17 +540,20 @@ def chi2df(file_path: str, ref_path: str, chi2_mode: str='', normalization_optio
     # Access the root file at ref_path
     ref_file, _ = get_root_file(ref_path)
 
-    # TODO: change chi2ndf_vals to to chi2_vals
     # Calculate the chi2 values and other relevant information for the comparison
-    f_path, chi2_dict,n_th1,n_th2,n_tp = validate_hists(file, file, ref_file,'',{'f_name':[],'f_type':[],'chi2ndf_vals':[]},0,0,0,path_length,chi2_mode,normalization_option)
+    # TODO: at this moment, validate_hists does need the same input_file as two separate input args, can be fixed at some point
+    # f_path, chi2_dict,n_th1,n_th2,n_tp = validate_hists(file, file, ref_file, '', {'f_name':[],'f_type':[],'chi2ndf_vals':[]}, 0, 0, 0, path_length, chi2options, normalization_option)
+    # f_path, chi2_dict,n_th1,n_th2,n_tp = validate_hists(file, file, ref_file, '', {'f_name':[],'f_type':[],'output_vals':[]}, 0, 0, 0, path_length, chi2options, normalization_option)
+    f_path, output_val_dict,n_th1,n_th2,n_tp = validate_hists(file, file, ref_file, '', {'f_name':[],'f_type':[],'output_vals':[]}, 0, 0, 0, path_length, chi2options, normalization_option)
 
     # Construct the dataframe
-    df = pd.DataFrame(chi2_dict)
+    # df = pd.DataFrame(chi2_dict)
+    df = pd.DataFrame(output_val_dict)
 
     return df
 
 
-def plot_dist_th1(df: pd.DataFrame, mode: str, bins:int=10000, sizex:int=15, sizey:int=9):
+def plot_dist_th1(df: pd.DataFrame, chi2options: str, bins:int=10000, sizex:int=15, sizey:int=9):
     """
     Plots the distribution of Chi2/NDF values for TH1 histograms.
     Args:
@@ -488,23 +561,30 @@ def plot_dist_th1(df: pd.DataFrame, mode: str, bins:int=10000, sizex:int=15, siz
         bins (int, optional): The number of bins to use for the histogram. Defaults to 10000.
         sizex (int, optional): The x-axis figsize of the plot. Defaults to 15.
         sizey (int, optional): The y-axis figsize of the plot. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist modes.
     """
     
     print("constructing th1 data...")
     df_th1s = df[df['f_type']=='TH1']
-    # TODO: change chi2ndf_vals to to chi2_vals
-    hist_data = df_th1s['chi2ndf_vals'].values
+    # hist_data = df_th1s['chi2ndf_vals'].values
+    hist_data = df_th1s['output_vals'].values
 
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH1 Chi2:{mode} freq', color='blue') # marker = ?
-    plt.xlabel(f'{mode}')
+    if "P" in chi2options:
+        plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH1 P-Value:{chi2options} freq', color='blue') # marker = ?
+        plt.title(f'TH1 P-Values Distplot')
+    elif "NDF" in chi2options:
+        plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH1 Chi2/NDF Value:{chi2options} freq', color='blue') # marker = ?
+        plt.title(f'TH1 Chi2/NDF Values Distplot')
+    else:
+        plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH1 Chi2 Value:{chi2options} freq', color='blue') # marker = ?
+        plt.title(f'TH1 Chi2 Values Distplot')
+    plt.xlabel(f'{chi2options}')
     plt.ylabel('Frequency')
-    plt.title(f'TH1 Chi2:{mode} Distplot')
     plt.legend(loc='upper right')
     plt.show()
     
-def plot_dist_th2(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:int=9):
+def plot_dist_th2(df: pd.DataFrame, chi2options: str, bins:int=50, sizex:int=15, sizey:int=9):
     """
     Plots the distribution of Chi2/NDF values for TH2 histograms.
     Args:
@@ -512,24 +592,24 @@ def plot_dist_th2(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:
         bins (int, optional): The number of bins to use for the histogram. Defaults to 50.
         sizex (int, optional): The x-axis figsize of the plot. Defaults to 15.
         sizey (int, optional): The y-axis figsize of the plot. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist modes.
     """
     
     print("constructing th2 data...")
     df_th2s = df[df['f_type']=='TH2']
-    # TODO: change this
-    hist_data = [df_th2s['chi2ndf_vals'].values]
+    # hist_data = [df_th2s['chi2ndf_vals'].values]
+    hist_data = df_th2s['output_vals'].values
 
     print("plotting th2 data...")
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH2 Chi2:{mode} freq', color='blue')
-    plt.xlabel(f'Chi2:{mode}')
+    plt.hist(hist_data, bins=bins, alpha=0.7, label=f'TH2 Chi2:{chi2options} freq', color='blue')
+    plt.xlabel(f'Chi2:{chi2options}')
     plt.ylabel('Frequency')
-    plt.title(f'TH2 Chi2:{mode} Distplot')
+    plt.title(f'TH2 Chi2:{chi2options} Distplot')
     plt.legend(loc='upper right')
     plt.show()
     
-def plot_dist_tps(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:int=9):
+def plot_dist_tps(df: pd.DataFrame, chi2options: str, bins:int=50, sizex:int=15, sizey:int=9):
     """
     Plots the distribution of Chi2 values for TProfile histograms.
     Args:
@@ -537,20 +617,27 @@ def plot_dist_tps(df: pd.DataFrame, mode: str, bins:int=50, sizex:int=15, sizey:
         bins (int, optional): The number of bins to use for the histogram. Defaults to 50.
         sizex (int, optional): The x-axis figsize of the plot. Defaults to 15.
         sizey (int, optional): The y-axis figsize of the plot. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist modes.
     """
     
     print("constructing tp data...")
     df_tp = df[df['f_type']=='TProfile']
-    # TODO: change this
-    hist_data = [df_tp['chi2ndf_vals'].values]    
+    # hist_data = [df_tp['chi2ndf_vals'].values]    
+    hist_data = df_tp['output_vals'].values
 
     print("plotting tp data...")
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change Chi2/NDF to something more reaonable that includes the options
-    plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label=f'TProfile Chi2:{mode} freq')
-    plt.xlabel(f'Chi2:{mode}')
+    if "P" in chi2options:
+        plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label=f'TProfile P-Value:{chi2options} freq')
+        plt.title(f'TProfile P-Values:{chi2options} Distplot')
+    elif "NDF" in chi2options:
+        plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label=f'TProfile Chi2/NDF Value:{chi2options} freq')
+        plt.title(f'TProfile Chi2/NDF Values:{chi2options} Distplot')
+    else:
+        plt.hist(hist_data, bins=bins, alpha=0.7, color='b', label=f'TProfile Chi2 Value:{chi2options} freq')
+        plt.title(f'TProfile Chi2 Values:{chi2options} Distplot')
+    plt.xlabel(f'Chi2:{chi2options}')
     plt.ylabel('Frequency')
-    plt.title(f'TProfile Chi2:{mode} Distplot')
     plt.legend(loc='upper right')
     plt.grid(True)
     plt.show()
@@ -583,12 +670,6 @@ def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_
         plt.figure(figsize=(sizex,sizey))
         plt.plot(hist_one['x'], hist_two['occ'].values-hist_one['occ'].values, marker='o', color='blue')
         plt.scatter(hist_one['x'], hist_two['occ'].values-hist_one['occ'].values, marker='o', color='blue')
-        #plt.plot(hist_one['x'], hist_one['occ'], marker='o', color='blue')
-        #plt.scatter(hist_one['x'], hist_one['occ'], marker='o', color='blue')
-        #plt.plot(hist_two['x'], hist_two['occ'], marker='o', color='red')
-        #plt.scatter(hist_two['x'], hist_two['occ'], marker='o', color='red')
-        #plt.hist(hist_one['occ'], bins=50, alpha=0.7, label=f'TH1 Chi2:{hist_name_to_view} freq', color='blue')
-        #plt.hist(hist_two['occ'], bins=50, alpha=0.7, label=f'TH1 Chi2:{hist_name_to_view} freq', color='red')
         plt.title(f'TH1-Diffs:{hist_name_to_view} (data=ref-file)')
         plt.xlabel(r'$\eta$')
         plt.ylabel('Occupancy')
@@ -629,33 +710,42 @@ def plot_diffs(df1: pd.DataFrame, df2: pd.DataFrame,  hist_name_to_view: str, f_
         plt.grid(True)
         plt.show()
     
-def plot_chi2_th1s(df_th1: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+def plot_chi2_th1s(df_th1: pd.DataFrame, chi2options: str, sizex:int=15, sizey:int=9):
     """
     Plot chi2 values calculated from the TH1 histograms between file1 and file2.
     Args:
         df_th1 (DataFrame): _description_
         sizex (int, optional): _description_. Defaults to 15.
         sizey (int, optional): _description_. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist mode.
     """
 
     # Plot the normalized chi2 data of the TH1 histograms
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change this to chi2_vals
-    plt.scatter(df_th1['f_name'], df_th1['chi2ndf_vals'], marker='o', color='blue')
+    # plt.scatter(df_th1['f_name'], df_th1['chi2ndf_vals'], marker='o', color='blue')
+    plt.scatter(df_th1['f_name'], df_th1['output_vals'], marker='o', color='blue')
+    if "P" in chi2options:
+        plt.ylabel(f'P-Value:{chi2options}')
+        plt.title(f'TH1 P-Values:{chi2options} values by hist, with norm option')
+    elif "NDF" in chi2options:
+        plt.ylabel(f'Chi2/NDF:{chi2options}')
+        plt.title(f'TH1 Chi2/NDF:{chi2options} values by hist, with norm option')
+    else:
+        plt.ylabel(f'Chi2 Value:{chi2options}')
+        plt.title(f'TH1 Chi2 Values:{chi2options} values by hist, with norm option')
     plt.xlabel('Hist Name')
-    plt.ylabel(f'Chi2:{mode}')
-    plt.title(f'TH1 Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def plot_chi2_th2s(df_th2: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+def plot_chi2_th2s(df_th2: pd.DataFrame, chi2options: str, sizex:int=15, sizey:int=9):
     """
     Plot the chi2 values of TH2 histograms with various options calculated from given args.
     Args:
         df_th2 (Dataframe): Dataframe containing the Chi2 values of the TH2 histograms.
         sizex (int, optional): The x-axis figsize of the plot. Defaults to 15.
         sizey (int, optional): The y-axis figsize of the plot. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist mode.
         
     Returns:
         None: The histogram data is normalized and plotted in place. 
@@ -663,40 +753,53 @@ def plot_chi2_th2s(df_th2: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
 
     # Plot the normalized chi2 data of the TH2 histograms
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change this to something more reasonable that includes the options
-    plt.scatter(df_th2['f_name'], df_th2['chi2ndf_vals'], marker='o', color='blue')
+    # plt.scatter(df_th2['f_name'], df_th2['chi2ndf_vals'], marker='o', color='blue')
+    plt.scatter(df_th2['f_name'], df_th2['output_vals'], marker='o', color='blue')
+    if "P" in chi2options:
+        plt.ylabel(f'P-Value:{chi2options}')
+        plt.title(f'TH2 P-Values:{chi2options} values by hist, with norm option')
+    elif "NDF" in chi2options:
+        plt.ylabel(f'Chi2/NDF:{chi2options}')
+        plt.title(f'TH2 Chi2/NDF:{chi2options} values by hist, with norm option')
+    else:
+        plt.ylabel(f'Chi2 Value:{chi2options}')
+        plt.title(f'TH2 Chi2 Values:{chi2options} values by hist, with norm option')
     plt.xlabel('Hist Name')
-    # TODO: change this
-    plt.ylabel(f'Chi2:{mode}')
-    plt.title(f'TH2 Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def plot_chi2_tps(df_tp: pd.DataFrame, mode: str, sizex:int=15, sizey:int=9):
+def plot_chi2_tps(df_tp: pd.DataFrame, chi2options: str, sizex:int=15, sizey:int=9):
     """
     Plot chi2 values of TProfile histograms with various options calculated from given args.
     Args:
         df_tp (DataFrame): DataFrame of TProfile histograms' data.
         sizex (int, optional): _description_. Defaults to 15.
         sizey (int, optional): _description_. Defaults to 9.
+        chi2options (str): The optional return parameter for chi2 or dist mode.
     
     Returns:
         None: The histogram data is normalized and plotted in place. 
     """
 
     plt.figure(figsize=(sizex,sizey))
-    # TODO: change this to something more reasonable that includes the options
-    plt.scatter(df_tp['f_name'], df_tp['chi2ndf_vals'], marker='o', color='blue')
+    # plt.scatter(df_tp['f_name'], df_tp['chi2ndf_vals'], marker='o', color='blue')
+    plt.scatter(df_tp['f_name'], df_tp['output_vals'], marker='o', color='blue')
+    if "P" in chi2options:
+        plt.ylabel(f'P-Value:{chi2options}')
+        plt.title(f'TProfile P-Values:{chi2options} values by hist, with norm option')
+    elif "NDF" in chi2options:
+        plt.ylabel(f'Chi2/NDF:{chi2options}')
+        plt.title(f'TProfile Chi2/NDF:{chi2options} values by hist, with norm option')
+    else:
+        plt.ylabel(f'Chi2 Value:{chi2options}')
+        plt.title(f'TProfile Chi2 Values:{chi2options} values by hist, with norm option')
     plt.xlabel('Hist Name')
-    # TODO: change this
-    plt.ylabel(f'Chi2:{mode}')
-    plt.title(f'TProfile Chi2:{mode} values by hist, with norm option')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.show()
     
-def process_normalization_args(args, mode:Optional[str]=None) -> pd.DataFrame:
+def process_normalization_args(args, chi2options:Optional[str]=None) -> pd.DataFrame:
     """
     Processes the normalization arguments and returns the chi2 dataframe based on the provided arguments.
     Args:
@@ -704,7 +807,7 @@ def process_normalization_args(args, mode:Optional[str]=None) -> pd.DataFrame:
             - file (str): The file path to the data file.
             - ref (str): The reference data.
             - norm (bool): A flag indicating whether normalization should be applied.
-        mode (str, optional): The mode in which to process the normalization. Defaults to None.
+        chi2options (str, optional): The optional return parameter for chi2 or dist mode. Defaults to None.
     Returns:
         DataFrame: The chi2 dataframe processed based on the provided arguments.
     Prints:
@@ -712,19 +815,15 @@ def process_normalization_args(args, mode:Optional[str]=None) -> pd.DataFrame:
     """
 
     print("Processing the chi2 dataframe...")
-    if mode is not None:
-        if args.norm:
-            print(f"Normalizing {args.norm} and Processing histogram datafile...")
-            return chi2df(args.file, args.ref, mode, args.norm)
-        else:
-            print("Processing histogram datafile no norm...")
-            return chi2df(args.file, args.ref, mode)
-    elif args.norm:
-        print(f"Normalizing {args.norm}, no mode...")
-        return chi2df(args.file, args.ref, args.norm)
+    chi2options = chi2options if chi2options is not None else ''
+    normalization_option = args.norm if args.norm else ''
+    
+    if normalization_option:
+        print(f"Normalizing {normalization_option} and Processing histogram datafile...")
     else:
-        print("Processing histogram datafile, no mode no norm...")
-        return chi2df(args.file, args.ref)
+        print("Processing histogram datafile no norm...")
+
+    return chi2df(args.file, args.ref, chi2options, normalization_option)
     
 def integral_normalize_histogram(hist_data: Dict[str, Any]) -> Any:
     """
@@ -734,24 +833,25 @@ def integral_normalize_histogram(hist_data: Dict[str, Any]) -> Any:
     (integral) is zero, the original chi-squared values are returned to avoid
     division by zero.
     Parameters:
-    hist_data (dict): A dictionary containing the key 'chi2ndf_vals' which maps to
+    hist_data (dict): A dictionary containing the key 'output_vals' which maps to
                       an array-like structure of chi-squared values.
     Returns:
     numpy.ndarray: An array of normalized chi-squared values.
     """
 
-    # Get the Chi2 values
-    chi2_vals = hist_data['chi2ndf_vals'].values
+    # Get the output values (chi2/pvalue/chi2ndf) from the histogram data
+    # chi2_vals = hist_data['chi2ndf_vals'].values
+    output_vals = hist_data['output_vals'].values
     
     # Get the integral as the sum of magnitude of Chi2 values
-    integral = sum(chi2_vals)
+    integral = sum(output_vals)
 
     # If that is 0, no need to scale them
     if integral == 0:
-        return chi2_vals
+        return output_vals
     
     # Otherwise, scale them according to the integral
-    return chi2_vals / integral
+    return output_vals / integral
 
 
 if __name__ == "__main__":
@@ -790,6 +890,7 @@ if __name__ == "__main__":
             8c. The --ww argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use weighted histograms. Can combine with some other options.
             8d. The --p argument is an OPTIONAL (chi2 or diff only) parameter and can be used to use the p-values. Can combine with some other options.
             8e. The --perndf argument is an OPTIONAL (chi2 or diff only) parameter and can be used to calculate chi2 per degree of freedom. Can combine with some other options.
+            Note: At this time, only the choice of --p or --perndf can be used for --htype TH2, not both.
 
         Example hname commands when using "--mode diff":
             (Example TH1 histogram for --hname when using --mode diff)
@@ -810,6 +911,10 @@ if __name__ == "__main__":
         (When running the script on LXPLUS, assumed to be in the same directory as the script OR in a cernbox eos location)
             python plots_only_tool.py --file /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref /eos/home-c/crandazz/SWAN_projects/ATLAS_DQ_Dashboard/data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
             python plots_only_tool.py --file data24_13p6TeV.00472943.physics_Main.merge.HIST.f1442_h464._0001.1 --ref data24_13p6TeV.00472943.physics_Main.merge.HIST.r15810_p6305.root --folders Tau --htype TH2 --mode diff --hname run_472943/Tau/Calo/Tau_Calo_centFracVsLB
+            
+        --- Algorithm Info ---
+            For the --mode chi2 option and --htype TH2, the algorithm will normalize the histograms by the sum of weights squared (Sumw2) and scale the reference histogram by the 2D histogram. 
+            Following that, it will calculate the chi2 values and return a choice of p_value, chi2_value, or chi2_per_ndf depending on if --perndf --p or no additional parameter is supplied.
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -832,6 +937,7 @@ if __name__ == "__main__":
     parser.add_argument('--perndf', action='store_true', help='Optional for chi2 or dist: Calculate chi2 per degree of freedom. Can combine with some other options.')
     
     # Parse the arguments
+    # In this application, args is defined here globally to be used particularly in the validate_hists function or other functions that may need access to it
     args = parser.parse_args()
 
     # TODO: verify if they do or do not need to be in the working directory
@@ -863,18 +969,22 @@ if __name__ == "__main__":
             chi2options += "CHI2/NDF"
             if args.uu:
                 chi2options += " UU"
-                if args.p:
-                    chi2options += " P"
+                # TODO: perndf and p cannot be used together at this time
+                # if args.p:
+                    # chi2options += " P"
             elif args.uw:
                 chi2options += " UW"
-                if args.p:
-                    chi2options += " P"
+                # TODO: perndf and p cannot be used together at this time
+                # if args.p:
+                    # chi2options += " P"
             elif args.ww:
                 chi2options += " WW"
-                if args.p:
-                    chi2options += " P"
-            elif args.p:
-                chi2options += " P"
+                # TODO: perndf and p cannot be used together at this time
+                # if args.p:
+                    # chi2options += " P"
+            # TODO: perndf and p cannot be used together at this time
+            # elif args.p:
+                # chi2options += " P"
         elif args.uu:
             chi2options += "UU"
             if args.p:
@@ -954,8 +1064,10 @@ if __name__ == "__main__":
             
             if args.norm == 'occ_area':
                 print("Normalizing TH1 Chi2 vals to occupancy area...")
-                chi2_normed_vals = integral_normalize_histogram(df_th1) # Normalizes the chi2_val occupancies
-                df_th1.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                # chi2_normed_vals = integral_normalize_histogram(df_th1) # Normalizes the chi2_val occupancies
+                # df_th1.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                output_vals_normed = integral_normalize_histogram(df_th1) # Normalizes the chi2_val occupancies
+                df_th1.loc[:,'output_vals'] = output_vals_normed
                 
             print("Plotting TH1 histograms...")
             if args.mode == 'dist':
@@ -971,8 +1083,10 @@ if __name__ == "__main__":
             
             if args.norm == 'occ_area':
                 print("Normalizing TH2 Chi2 vals to occupancy area...")
-                chi2_normed_vals = integral_normalize_histogram(df_th2)
-                df_th2.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                # chi2_normed_vals = integral_normalize_histogram(df_th2)
+                # df_th2.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                output_vals_normed = integral_normalize_histogram(df_th2)
+                df_th2.loc[:,'output_vals'] = output_vals_normed
                 
             print("Plotting TH2 histograms...")
             if args.mode == 'dist':
@@ -987,8 +1101,10 @@ if __name__ == "__main__":
             df_tp = df[df['f_type']=='TProfile']
             if args.norm == 'occ_area':
                 print("Normalizing TProfile Chi2 vals to occupancy area...")
-                chi2_normed_vals = integral_normalize_histogram(df_tp)
-                df_tp.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                # chi2_normed_vals = integral_normalize_histogram(df_tp)
+                # df_tp.loc[:,'chi2ndf_vals'] = chi2_normed_vals
+                output_vals_normed = integral_normalize_histogram(df_tp)
+                df_tp.loc[:,'output_vals'] = output_vals_normed
                 
             print("Plotting TProfile histograms...")
             if args.mode == 'dist':

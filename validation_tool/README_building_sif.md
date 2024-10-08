@@ -118,6 +118,6 @@ echo $DISPLAY # should show something like   "localhost" or ":0" or something
 apptainer shell path/to/avd-tools-container.sif # No sure when/how the apptainer command got substituted, but theres documentation of when i used those commands in the .sh files, may need to use
 singularity shell path/to/avd-tools-container.sif
 ```
-15. If all goes well, then you will be in the container at /afs/cern.ch/user/<your_first_username_letter>/<your_username> which will have access to the datafiles you have stored there. It should also have access to other afs areas that are public (as it is linked to afs). The container itself may contain a copy of plots_only_tool.py (verify this) if so run that. If not, navigate to /afs/cern.ch/user/c/crandazz/public for plots_only_tool.py
+15. If all goes well, then you will be in the container at /afs/cern.ch/user/<your_first_username_letter>/<your_username> which will have access to the datafiles you have stored there. It should also have access to other afs areas that are public (as it is linked to afs). The container itself may contain a copy of atlas_validation_tool.py (verify this) if so run that. If not, navigate to /afs/cern.ch/user/c/crandazz/public for atlas_validation_tool.py
 
-16. Finally, with the path for plots_only_tool.py in hand and being inside the container, you can run plots_only_tool.py -h to get documentation on how to run the script and its specific commands to do the validation
+16. Finally, with the path for atlas_validation_tool.py in hand and being inside the container, you can run atlas_validation_tool.py -h to get documentation on how to run the script and its specific commands to do the validation
